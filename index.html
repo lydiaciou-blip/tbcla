@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>華語學習卡 (最終完整版) / Chinese Flashcards (Complete) - L1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #ffffff; }
+        .serif { font-family: 'Noto Serif TC', serif; }
+        .card-container { perspective: 1000px; }
+        .card { position: relative; width: 100%; min-height: 450px; transform-style: preserve-3d; transition: transform 0.6s; }
+        .card.is-flipped { transform: rotateY(180deg); }
+        .card-face {
+            position: absolute; width: 100%; height: 100%;
+            backface-visibility: hidden; -webkit-backface-visibility: hidden;
+            display: flex; flex-direction: column;
+            padding: 2rem; border-radius: 1.5rem; background: white;
+            border: 2px solid #f0f0f0; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05);
+        }
+        .card-front { justify-content: center; align-items: center; }
+        .card-back { transform: rotateY(180deg); justify-content: flex-start; align-items: flex-start; }
+        .card-back-content { font-size: 1.125rem; line-height: 1.75; }
+        .card-back-content .example-sentence { font-size: 1.25rem; }
+        .card-back-content .example-translation { font-size: 1rem; }
+        .speaker-icon { cursor: pointer; color: #2563eb; transition: color 0.2s; width: 24px; height: 24px; }
+        .speaker-icon:hover { color: #1d4ed8; }
+        .dopamine-btn { padding: 0.75rem 1.5rem; border-radius: 9999px; font-weight: 600; color: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1); transition: all .2s ease-in-out; }
+        .dopamine-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1); }
+        .btn-yellow { background-color: #f59e0b; } .btn-yellow:hover { background-color: #fbbd23; }
+        .btn-green { background-color: #10b981; } .btn-green:hover { background-color: #34d399; }
+        .btn-blue { background-color: #3b82f6; } .btn-blue:hover { background-color: #60a5fa; }
+        .btn-purple { background-color: #8b5cf6; } .btn-purple:hover { background-color: #a78bfa; }
+        .btn-slate { background-color: #475569; } .btn-slate:hover { background-color: #64748b; }
+        .progress-bar-bg { background-color: #e5e7eb; border-radius: 9999px; overflow: hidden; }
+        .progress-bar-fg { background-color: #10b981; height: 100%; transition: width 0.5s ease-in-out; }
+        
+        .quiz-option { transition: all 0.2s; }
+        .quiz-option.selected { border-color: #3b82f6; background-color: #eff6ff; }
+        .quiz-option.correct { border-color: #10b981; background-color: #d1fae5; }
+        .quiz-option.incorrect { border-color: #ef4444; background-color: #fee2e2; }
+
+        #typing-prompt span { transition: color 0.2s; }
+        .correct-char { color: #10b981; }
+        .incorrect-char { color: #ef4444; text-decoration: underline; text-decoration-color: #ef4444; }
+        .untyped-char { color: #9ca3af; }
+        
+        #dictation-input.correct { border-color: #10b981; }
+        #dictation-input.incorrect { border-color: #ef4444; }
+    </style>
+</head>
+<body class="antialiased text-slate-800">
+
+    <div id="app" class="max-w-4xl mx-auto p-4 sm:p-6 md:p-8">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-slate-900 serif">華語學習卡 / Chinese Flashcards</h1>
+            <p class="text-slate-600 mt-2">臺灣華語文能力基準 (TBCL) - 第1級 / Level 1 (測驗版)</p>
+        </header>
+
+        <!-- Main Views Container -->
+        <main id="unit-selection-view">
+            <div class="flex justify-center mb-6">
+                <button id="view-report-btn" class="dopamine-btn btn-blue">學習報告 / Learning Report</button>
+            </div>
+            <h2 class="text-2xl font-semibold mb-6 text-center">選擇單元 / Select a Unit</h2>
+            <div id="unit-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5"></div>
+        </main>
+
+        <main id="flashcard-view" class="hidden">
+            <!-- Flashcard view content -->
+            <div class="flex justify-between items-center mb-4">
+                <button id="back-to-units-flashcard" class="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 transition-colors">‹ 返回 / Back</button>
+                <div id="card-counter" class="text-slate-600 font-medium"></div>
+            </div>
+            <div class="card-container">
+                <div id="card" class="card">
+                    <div class="card-face card-front">
+                        <div class="text-center">
+                            <h2 id="word" class="serif text-8xl md:text-9xl font-bold mb-4 flex items-center justify-center gap-4"></h2>
+                            <p id="pronunciation" class="text-2xl text-slate-500"></p>
+                        </div>
+                    </div>
+                    <div class="card-face card-back overflow-y-auto">
+                        <div id="card-back-content" class="w-full card-back-content"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="mastery-controls" class="mt-4 text-center space-x-4">
+                <button id="mark-reviewing" class="px-6 py-2 border-2 border-orange-400 text-orange-500 rounded-full font-semibold hover:bg-orange-50 transition-colors">還不熟 / Needs review</button>
+                <button id="mark-mastered" class="px-6 py-2 border-2 border-green-500 text-green-600 rounded-full font-semibold hover:bg-green-50 transition-colors">我會了 / I know it</button>
+            </div>
+            <footer class="mt-4 flex justify-between items-center">
+                <button id="prev-card" class="px-6 py-3 bg-white border border-slate-300 rounded-full shadow-sm hover:bg-slate-50 transition-colors">‹ 上一個 / Prev</button>
+                <button id="flip-card" class="dopamine-btn btn-yellow">翻面 / Flip</button>
+                <button id="next-card" class="px-6 py-3 bg-white border border-slate-300 rounded-full shadow-sm hover:bg-slate-50 transition-colors">下一個 / Next ›</button>
+            </footer>
+        </main>
+
+        <main id="quiz-view" class="hidden">
+            <!-- Quiz view content -->
+            <div class="flex justify-between items-center mb-4">
+                <button id="back-to-units-quiz" class="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 transition-colors">‹ 放棄練習 / Quit</button>
+                <div id="quiz-progress" class="text-slate-600 font-medium"></div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl border-2 border-slate-100 shadow-sm">
+                <h3 id="quiz-question" class="text-2xl text-center font-semibold mb-6 h-20 flex items-center justify-center"></h3>
+                <div id="quiz-options" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </div>
+            <footer class="mt-6 text-center">
+                <button id="next-question-btn" class="dopamine-btn btn-green w-full md:w-auto" disabled>下一題 / Next Question</button>
+            </footer>
+        </main>
+
+        <main id="typing-view" class="hidden">
+            <!-- Typing view content -->
+             <div class="flex justify-between items-center mb-4">
+                <button id="back-to-units-typing" class="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 transition-colors">‹ 放棄練習 / Quit</button>
+                <div id="typing-progress" class="text-slate-600 font-medium"></div>
+            </div>
+            <div class="bg-white p-8 rounded-2xl border-2 border-slate-100 shadow-sm">
+                <div id="typing-prompt" class="text-3xl text-center text-slate-400 mb-6 p-4 rounded-lg bg-slate-50 select-none tracking-widest"></div>
+                <input type="text" id="typing-input" class="w-full p-4 border-2 border-slate-300 rounded-lg text-2xl text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="開始打字..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            </div>
+             <footer class="mt-6 text-center">
+                <button id="next-typing-item-btn" class="dopamine-btn btn-green w-full md:w-auto" disabled>下一題 / Next</button>
+            </footer>
+        </main>
+
+        <main id="dictation-view" class="hidden">
+            <div class="flex justify-between items-center mb-4">
+                <button id="back-to-units-dictation" class="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 transition-colors">‹ 放棄練習 / Quit</button>
+                <div id="dictation-progress" class="text-slate-600 font-medium"></div>
+            </div>
+            <div class="bg-white p-8 rounded-2xl border-2 border-slate-100 shadow-sm text-center">
+                <button id="play-dictation-audio-btn" class="dopamine-btn btn-blue mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                    </svg>
+                    播放聲音 / Play Audio
+                </button>
+                <input type="text" id="dictation-input" class="w-full p-4 border-2 border-slate-300 rounded-lg text-2xl text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="請在此輸入..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <div id="dictation-answer-feedback" class="mt-4 text-xl h-8"></div>
+                <div class="mt-4">
+                    <button id="check-dictation-answer-btn" class="dopamine-btn btn-purple">核對答案 / Check Answer</button>
+                </div>
+            </div>
+             <footer class="mt-6 text-center">
+                <button id="next-dictation-item-btn" class="dopamine-btn btn-green w-full md:w-auto" disabled>下一題 / Next</button>
+            </footer>
+        </main>
+
+        <main id="quiz-results-view" class="hidden">
+             <!-- Quiz Results content -->
+            <div class="bg-white p-8 rounded-2xl border-2 border-slate-100 shadow-lg text-center">
+                <h2 class="text-3xl font-bold mb-2">練習結束！/ Quiz Complete!</h2>
+                <p class="text-5xl font-bold my-4" id="quiz-score"></p>
+                <div id="quiz-results-details" class="mt-6 text-left max-h-60 overflow-y-auto"></div>
+                <button id="back-to-units-results" class="dopamine-btn btn-blue mt-6">返回單元列表 / Back to Units</button>
+            </div>
+        </main>
+        
+        <main id="report-view" class="hidden bg-white p-6 rounded-2xl border-2 border-slate-100 shadow-sm">
+            <!-- Report view content -->
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold">學習報告 / Learning Report</h2>
+                <button id="close-report-btn" class="text-2xl text-slate-500 hover:text-slate-800">&times;</button>
+            </div>
+            <div id="report-summary" class="text-center mb-6"></div>
+            <div class="text-center mb-6">
+                <button id="download-report-btn" class="dopamine-btn btn-green">下載學習報表 / Download Report (CSV)</button>
+            </div>
+            <div id="report-details" class="grid grid-cols-1 md:grid-cols-3 gap-6 max-h-[50vh] overflow-y-auto">
+                <div><h3 class="font-bold text-lg text-green-600 mb-2">已掌握 / Mastered</h3><ul id="report-mastered-list" class="space-y-1 text-sm"></ul></div>
+                <div><h3 class="font-bold text-lg text-orange-500 mb-2">需複習 / Needs Review</h3><ul id="report-reviewing-list" class="space-y-1 text-sm"></ul></div>
+                <div><h3 class="font-bold text-lg text-slate-500 mb-2">未學習 / Not Studied</h3><ul id="report-unseen-list" class="space-y-1 text-sm"></ul></div>
+            </div>
+        </main>
+        
+        <footer class="text-center mt-12 text-xs text-slate-400">
+            <p>詞彙資料來源：國家教育研究院 - <a href="https://coct.naer.edu.tw/file/files/%E6%8A%80%E8%A1%93%E5%A0%B1%E5%91%8A%EF%BC%9A%E3%80%8A%E8%A7%A3%E8%A9%9E%E9%80%A0%E5%8F%A5-%E8%8F%AF%E8%AA%9E%E6%96%87%E5%9F%BA%E7%A4%8E%E8%A9%9E%E8%AA%9E%E5%BD%99%E7%B7%A8%E3%80%8B.pdf" target="_blank" class="underline hover:text-blue-500">《解詞造句—華語文基礎詞語彙編》</a></p>
+            <p class="mt-1">Vocabulary Source: National Academy for Educational Research - "Building Sentences with Lexical Items: A Word List for Basic Mandarin Chinese"</p>
+        </footer>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const appData = { allWords: [], units: [], progress: {}, quizScores: {} };
+    
+    const speakerIconSVG = `<svg class="speaker-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M16.3435 8.92893L14.9293 7.51472L19.8789 2.56519L21.2931 3.9794L16.3435 8.92893ZM3 9H5V15H3V9ZM7 7H9V17H7V7ZM11 5H13V19H11V5Z M14.9293 16.4853L16.3435 15.0711L21.2931 20.0206L19.8789 21.4348L14.9293 16.4853Z"></path></svg>`;
+    
+    // A global promise to ensure voices are loaded, fixing potential race conditions.
+    let voicesPromise = null;
+    if (typeof window.speechSynthesis !== 'undefined') {
+        voicesPromise = new Promise(resolve => {
+            const getAndResolveVoices = () => {
+                const voices = window.speechSynthesis.getVoices();
+                if (voices.length > 0) {
+                    resolve(voices);
+                }
+            };
+            
+            // Check if voices are already available
+            getAndResolveVoices();
+            
+            // If not, set up the event listener
+            if (window.speechSynthesis.getVoices().length === 0) {
+                window.speechSynthesis.onvoiceschanged = getAndResolveVoices;
+            }
+        });
+    }
+
+    function completeWordData(data) {
+        data.allWords = [
+            // U1: Greetings & People (21)
+            { id: 2, unit: 1, word: '愛', zhuyin: 'ㄞˋ', pinyin: 'ài', def: [{ pos: 'Vs', en: 'to love', eg: [{zh:'我愛你。', en:'I love you.'}, {zh:'他很愛吃水果。', en:'He really loves to eat fruit.'}] }, { pos: 'N', en: 'love', eg: [{zh:'爸爸媽媽對孩子的愛很多。', en:'Parents have a lot of love for their children.'}] }] },
+            { id: 4, unit: 1, word: '爸爸/爸', zhuyin: 'ㄅㄚˋ ㄅㄚ˙ / ㄅㄚˋ', pinyin: 'bàba/bà', def: [{ pos: 'N', en: 'father', eg: [{zh:'我爸爸喜歡看電影。', en:'My father likes to watch movies.'}, {zh:'爸爸，生日快樂。', en:'Dad, happy birthday.'}] }] },
+            { id: 39, unit: 1, word: '大家', zhuyin: 'ㄉㄚˋ ㄐㄧㄚ', pinyin: 'dàjiā', def: [{ pos: 'N', en: 'everybody, everyone', eg: [{zh:'大家好！', en:'Hello everyone!'}, {zh:'我給大家介紹台灣的小吃。', en:'Let me introduce Taiwanese snacks to everyone.'}] }] },
+            { id: 45, unit: 1, word: '的', zhuyin: 'ㄉㄜ˙', pinyin: 'de', def: [{ pos: 'P', en: '(possessive particle)', eg: [{zh:'我的書。', en:'My book.'}, {zh:'他是我的中文老師。', en:'He is my Chinese teacher.'}] }] },
+            { id: 120, unit: 1, word: '家', zhuyin: 'ㄐㄧㄚ', pinyin: 'jiā', def: [{ pos: 'N', en: 'family, home', eg: [{zh:'我家有五個人。', en:'There are five people in my family.'}, {zh:'歡迎來我家玩。', en:'Welcome to my home to hang out.'}] }] },
+            { id: 122, unit: 1, word: '家人', zhuyin: 'ㄐㄧㄚ ㄖㄣˊ', pinyin: 'jiārén', def: [{ pos: 'N', en: 'family member', eg: [{zh:'我愛我的家人。', en:'I love my family.'}] }] },
+            { id: 126, unit: 1, word: '叫', zhuyin: 'ㄐㄧㄠˋ', pinyin: 'jiào', def: [{ pos: 'V', en: 'to be called, to call', eg: [{zh:'你叫什麼名字？', en:'What is your name?'}, {zh:'他叫我去看電影。', en:'He asked me to go see a movie.'}] }] },
+            { id: 129, unit: 1, word: '姊姊/姐', zhuyin: 'ㄐㄧㄝˇ ˙ㄐㄧㄝ / ㄐㄧㄝˇ', pinyin: 'jiějie/jiě', def: [{ pos: 'N', en: 'older sister', eg: [{zh:'我有兩個姊姊。', en:'I have two older sisters.'}] }] },
+            { id: 130, unit: 1, word: '介紹', zhuyin: 'ㄐㄧㄝˋ ㄕㄠˋ', pinyin: 'jièshào', def: [{ pos: 'V', en: 'to introduce', eg: [{zh:'我來介紹我的朋友給你。', en:'Let me introduce my friend to you.'}] }] },
+            { id: 159, unit: 1, word: '老師', zhuyin: 'ㄌㄠˇ ㄕ', pinyin: 'lǎoshī', def: [{ pos: 'N', en: 'teacher', eg: [{zh:'他是我的中文老師。', en:'He is my Chinese teacher.'}] }] },
+            { id: 170, unit: 1, word: '媽媽/媽', zhuyin: 'ㄇㄚ ㄇㄚ˙ / ㄇㄚ', pinyin: 'māma/mā', def: [{ pos: 'N', en: 'mother', eg: [{zh:'我媽媽做的菜很好吃。', en:'The food my mom makes is delicious.'}] }] },
+            { id: 182, unit: 1, word: '妹妹/妹', zhuyin: 'ㄇㄟˋ ㄇㄟ˙ / ㄇㄟˋ', pinyin: 'mèimei/mèi', def: [{ pos: 'N', en: 'younger sister', eg: [{zh:'我妹妹今年十歲。', en:'My younger sister is ten years old this year.'}] }] },
+            { id: 199, unit: 1, word: '你', zhuyin: 'ㄋㄧˇ', pinyin: 'nǐ', def: [{ pos: 'N', en: 'you', eg: [{zh:'你好嗎？', en:'How are you?'}] }] },
+            { id: 200, unit: 1, word: '您', zhuyin: 'ㄋㄧㄣˊ', pinyin: 'nín', def: [{ pos: 'N', en: 'you (polite)', eg: [{zh:'老師，您好。', en:'Hello, teacher (polite).'}] }] },
+            { id: 201, unit: 1, word: '朋友', zhuyin: 'ㄆㄥˊ ㄧㄡˇ', pinyin: 'péngyǒu', def: [{ pos: 'N', en: 'friend', eg: [{zh:'他是我最好的朋友。', en:'He is my best friend.'}] }] },
+            { id: 204, unit: 1, word: '人', zhuyin: 'ㄖㄣˊ', pinyin: 'rén', def: [{ pos: 'N', en: 'person, people', eg: [{zh:'台灣人很熱情。', en:'Taiwanese people are very welcoming.'}, {zh:'我家有五個人。', en:'There are five people in my family.'}] }] },
+            { id: 212, unit: 1, word: '是', zhuyin: 'ㄕˋ', pinyin: 'shì', def: [{ pos: 'V', en: 'to be (is, am, are)', eg: [{zh:'我是一位老師。', en:'I am a teacher.'}, {zh:'這是不是你的手機？', en:'Is this your cellphone or not?'}] }] },
+            { id: 281, unit: 1, word: '我', zhuyin: 'ㄨㄛˇ', pinyin: 'wǒ', def: [{ pos: 'N', en: 'I, me', eg: [{zh:'我叫王大明。', en:'My name is Wang Da-Ming.'}] }] },
+            { id: 298, unit: 1, word: '謝謝', zhuyin: 'ㄒㄧㄝˋ ㄒㄧㄝ˙', pinyin: 'xièxie', def: [{ pos: 'I', en: 'thanks, thank you', eg: [{zh:'謝謝你的幫忙。', en:'Thank you for your help.'}] }] },
+            { id: 299, unit: 1, word: '姓', zhuyin: 'ㄒㄧㄥˋ', pinyin: 'xìng', def: [{ pos: 'V', en: 'to be surnamed', eg: [{zh:'請問您姓什麼？', en:'May I ask your surname?'}, {zh:'我姓李。', en:'My surname is Li.'}] }] },
+            { id: 318, unit: 1, word: '學生', zhuyin: 'ㄒㄩㄝˊ ㄕㄥ', pinyin: 'xuéshēng', def: [{ pos: 'N', en: 'student', eg: [{zh:'我是台灣大學的學生。', en:'I am a student at National Taiwan University.'}] }] },
+            { id: 34, unit: 2, word: '床', zhuyin: 'ㄔㄨㄤˊ', pinyin: 'chuáng', def: [{ pos: 'N', en: 'bed', eg: [{zh:'房間裡有一張床。', en:'There is a bed in the room.'}] }] },
+            { id: 49, unit: 2, word: '弟弟/弟', zhuyin: 'ㄉㄧˋ ˙ㄉㄧ / ㄉㄧˋ', pinyin: 'dìdi/dì', def: [{ pos: 'N', en: 'younger brother', eg: [{zh:'我有兩個弟弟。', en:'I have two younger brothers.'}, {zh:'他是我弟弟。', en:'He is my younger brother.'}] }] },
+            { id: 68, unit: 2, word: '兒子', zhuyin: 'ㄦˊ ˙ㄗ', pinyin: 'érzi', def: [{ pos: 'N', en: 'son', eg: [{zh:'他的兒子很可愛。', en:'His son is very cute.'}] }] },
+            { id: 74, unit: 2, word: '房間', zhuyin: 'ㄈㄤˊ ㄐㄧㄢ', pinyin: 'fángjiān', def: [{ pos: 'N', en: 'room', eg: [{zh:'我的房間不大，可是很舒服。', en:'My room is not big, but it is comfortable.'}] }] },
+            { id: 75, unit: 2, word: '房子', zhuyin: 'ㄈㄤˊ ˙ㄗ', pinyin: 'fángzi', def: [{ pos: 'N', en: 'house, building', eg: [{zh:'他買了一個很大的房子。', en:'He bought a very big house.'}] }] },
+            { id: 85, unit: 2, word: '哥哥/哥', zhuyin: 'ㄍㄜ ˙ㄍㄜ / ㄍㄜ', pinyin: 'gēge/gē', def: [{ pos: 'N', en: 'older brother', eg: [{zh:'我哥哥是工程師。', en:'My older brother is an engineer.'}] }] },
+            { id: 119, unit: 2, word: '家', zhuyin: 'ㄐㄧㄚ', pinyin: 'jiā', def: [{ pos: 'M', en: '(measure for families, businesses)', eg: [{zh:'這家商店的東西很便宜。', en:'The things in this store are very cheap.'}] }] },
+            { id: 183, unit: 2, word: '門', zhuyin: 'ㄇㄣˊ', pinyin: 'mén', def: [{ pos: 'N', en: 'door, gate', eg: [{zh:'請關門。', en:'Please close the door.'}, {zh:'我在學校門口等你。', en:'I am waiting for you at the school gate.'}] }] },
+            { id: 184, unit: 2, word: '門口', zhuyin: 'ㄇㄣˊ ㄎㄡˇ', pinyin: 'ménkǒu', def: [{ pos: 'N', en: 'doorway, entrance', eg: [{zh:'請在門口脫鞋。', en:'Please take off your shoes at the entrance.'}] }] },
+            { id: 258, unit: 2, word: '椅子', zhuyin: 'ㄧˇ ˙ㄗ', pinyin: 'yǐzi', def: [{ pos: 'N', en: 'chair', eg: [{zh:'這張椅子很舒服。', en:'This chair is very comfortable.'}] }] },
+            { id: 272, unit: 2, word: '太太', zhuyin: 'ㄊㄞˋ ㄊㄞ˙', pinyin: 'tàitai', def: [{ pos: 'N', en: 'Mrs., wife', eg: [{zh:'王太太，您好。', en:'Hello, Mrs. Wang.'}, {zh:'這是我太太。', en:'This is my wife.'}] }] },
+            { id: 291, unit: 2, word: '小姐', zhuyin: 'ㄒㄧㄠˇ ㄐㄧㄝˇ', pinyin: 'xiǎojiě', def: [{ pos: 'N', en: 'Miss, young lady', eg: [{zh:'林小姐，您的電話。', en:'Miss Lin, you have a phone call.'}] }] },
+            { id: 313, unit: 2, word: '先生', zhuyin: 'ㄒㄧㄢ ㄕㄥ', pinyin: 'xiānsheng', def: [{ pos: 'N', en: 'Mr., husband, sir', eg: [{zh:'陳先生，您好。', en:'Hello, Mr. Chen.'}, {zh:'我先生在銀行上班。', en:'My husband works at a bank.'}] }] },
+            { id: 314, unit: 2, word: '鄉下', zhuyin: 'ㄒㄧㄤ ㄒㄧㄚˋ', pinyin: 'xiāngxià', def: [{ pos: 'N', en: 'countryside', eg: [{zh:'我喜歡住在鄉下，空氣很好。', en:'I like living in the countryside, the air is very good.'}] }] },
+            { id: 329, unit: 2, word: '有', zhuyin: 'ㄧㄡˇ', pinyin: 'yǒu', def: [{ pos: 'V', en: 'to have, there is/are', eg: [{zh:'我有一隻狗。', en:'I have a dog.'}, {zh:'桌子上面有本書。', en:'There is a book on the table.'}] }] },
+            { id: 346, unit: 2, word: '在', zhuyin: 'ㄗㄞˋ', pinyin: 'zài', def: [{ pos: 'V', en: 'to be at/in/on', eg: [{zh:'我在家。', en:'I am at home.'}, {zh:'他在圖書館看書。', en:'He is reading in the library.'}] }] },
+            { id: 390, unit: 2, word: '住', zhuyin: 'ㄓㄨˋ', pinyin: 'zhù', def: [{ pos: 'V', en: 'to live, to stay', eg: [{zh:'我住在台北。', en:'I live in Taipei.'}, {zh:'他今天住在哪個飯店？', en:'Which hotel is he staying at today?'}] }] },
+            { id: 391, unit: 2, word: '桌子', zhuyin: 'ㄓㄨㄛ ˙ㄗ', pinyin: 'zhuōzi', def: [{ pos: 'N', en: 'table, desk', eg: [{zh:'請把書放在桌子上。', en:'Please put the book on the table.'}] }] },
+            { id: 393, unit: 2, word: '子', zhuyin: 'ㄗˇ', pinyin: 'zǐ', def: [{ pos: 'N', en: 'child, son', eg: [{zh:'孔子是中國有名的老師。', en:'Confucius is a famous teacher from China.'}] }] },
+            { id: 396, unit: 2, word: '租', zhuyin: 'ㄗㄨ', pinyin: 'zū', def: [{ pos: 'V', en: 'to rent', eg: [{zh:'我想在學校附近租房子。', en:'I want to rent a house near the school.'}] }] },
+            { id: 1, unit: 3, word: '八', zhuyin: 'ㄅㄚ', pinyin: 'bā', def: [{ pos: 'N', en: 'eight', eg: [{zh:'八點了，該起床了。', en:"It's eight o'clock, time to get up."}] }] },
+            { id: 5, unit: 3, word: '百', zhuyin: 'ㄅㄞˇ', pinyin: 'bǎi', def: [{ pos: 'N', en: 'hundred', eg: [{zh:'這本書一百塊錢。', en:'This book is one hundred dollars.'}] }] },
+            { id: 7, unit: 3, word: '半', zhuyin: 'ㄅㄢˋ', pinyin: 'bàn', def: [{ pos: 'N', en: 'half', eg: [{zh:'現在是下午兩點半。', en:"It's 2:30 in the afternoon."}, {zh:'我吃了半個西瓜。', en:'I ate half a watermelon.'}] }] },
+            { id: 19, unit: 3, word: '本', zhuyin: 'ㄅㄣˇ', pinyin: 'běn', def: [{ pos: 'M', en: '(for books)', eg: [{zh:'我買了三本書。', en:'I bought three books.'}] }] },
+            { id: 67, unit: 3, word: '二', zhuyin: 'ㄦˋ', pinyin: 'èr', def: [{ pos: 'N', en: 'two', eg: [{zh:'今年是二〇二一年。', en:'This year is 2021.'}] }] },
+            { id: 83, unit: 3, word: '個', zhuyin: 'ㄍㄜ˙', pinyin: 'ge', def: [{ pos: 'M', en: '(a common measure word)', eg: [{zh:'他有三個孩子。', en:'He has three children.'}, {zh:'我買了一個麵包。', en:'I bought a loaf of bread.'}] }] },
+            { id: 131, unit: 3, word: '件', zhuyin: 'ㄐㄧㄢˋ', pinyin: 'jiàn', def: [{ pos: 'M', en: '(for clothes, items)', eg: [{zh:'這件衣服很好看。', en:'This piece of clothing looks good.'}] }] },
+            { id: 141, unit: 3, word: '九', zhuyin: 'ㄐㄧㄡˇ', pinyin: 'jiǔ', def: [{ pos: 'N', en: 'nine', eg: [{zh:'他有九個朋友。', en:'He has nine friends.'}] }] },
+            { id: 164, unit: 3, word: '輛', zhuyin: 'ㄌㄧㄤˋ', pinyin: 'liàng', def: [{ pos: 'M', en: '(for vehicles)', eg: [{zh:'門口停了兩輛車。', en:'Two cars are parked at the entrance.'}] }] },
+            { id: 166, unit: 3, word: '兩', zhuyin: 'ㄌㄧㄤˇ', pinyin: 'liǎng', def: [{ pos: 'N', en: 'two (used with M.W.)', eg: [{zh:'我有兩個姊姊。', en:'I have two older sisters.'}] }] },
+            { id: 168, unit: 3, word: '六', zhuyin: 'ㄌㄧㄡˋ', pinyin: 'liù', def: [{ pos: 'N', en: 'six', eg: [{zh:'一個星期有七天，我們要上六天課。', en:'There are seven days in a week, and we have six days of class.'}] }] },
+            { id: 202, unit: 3, word: '七', zhuyin: 'ㄑㄧ', pinyin: 'qī', def: [{ pos: 'N', en: 'seven', eg: [{zh:'我每天七點起床。', en:'I get up at seven every day.'}] }] },
+            { id: 203, unit: 3, word: '千', zhuyin: 'ㄑㄧㄢ', pinyin: 'qiān', def: [{ pos: 'N', en: 'thousand', eg: [{zh:'這支手機三千塊。', en:'This phone costs three thousand dollars.'}] }] },
+            { id: 211, unit: 3, word: '三', zhuyin: 'ㄙㄢ', pinyin: 'sān', def: [{ pos: 'N', en: 'three', eg: [{zh:'我家有三個人。', en:'There are three people in my family.'}] }] },
+            { id: 228, unit: 3, word: '十', zhuyin: 'ㄕˊ', pinyin: 'shí', def: [{ pos: 'N', en: 'ten', eg: [{zh:'他今年十歲。', en:'He is ten years old this year.'}] }] },
+            { id: 239, unit: 3, word: '四', zhuyin: 'ㄙˋ', pinyin: 'sì', def: [{ pos: 'N', en: 'four', eg: [{zh:'一年有四季。', en:'There are four seasons in a year.'}] }] },
+            { id: 271, unit: 3, word: '歲', zhuyin: 'ㄙㄨㄟˋ', pinyin: 'suì', def: [{ pos: 'M', en: 'year (of age)', eg: [{zh:'你幾歲？', en:'How old are you?'}, {zh:'我今年二十歲。', en:'I am twenty years old this year.'}] }] },
+            { id: 280, unit: 3, word: '萬', zhuyin: 'ㄨㄢˋ', pinyin: 'wàn', def: [{ pos: 'N', en: 'ten thousand', eg: [{zh:'這輛車要八十萬。', en:'This car costs 800,000.'}] }] },
+            { id: 282, unit: 3, word: '五', zhuyin: 'ㄨˇ', pinyin: 'wǔ', def: [{ pos: 'N', en: 'five', eg: [{zh:'我下午五點下班。', en:'I get off work at 5 PM.'}] }] },
+            { id: 283, unit: 3, word: '位', zhuyin: 'ㄨㄟˋ', pinyin: 'wèi', def: [{ pos: 'M', en: '(polite for people)', eg: [{zh:'請問您幾位？', en:'How many people in your party?'}, {zh:'這位是王老師。', en:'This is Teacher Wang.'}] }] },
+            { id: 326, unit: 3, word: '一', zhuyin: 'ㄧ', pinyin: 'yī', def: [{ pos: 'N', en: 'one', eg: [{zh:'我只有一個妹妹。', en:'I only have one younger sister.'}] }] },
+            { id: 341, unit: 3, word: '張', zhuyin: 'ㄓㄤ', pinyin: 'zhāng', def: [{ pos: 'M', en: '(for flat objects)', eg: [{zh:'請給我一張紙。', en:'Please give me a piece of paper.'}, {zh:'我買了一張桌子。', en:'I bought a table.'}] }] },
+            // U4: Time Expressions (24)
+            { id: 50, unit: 4, word: '點', zhuyin: 'ㄉㄧㄢˇ', pinyin: 'diǎn', def: [{ pos: 'M', en: "o'clock", eg: [{zh:'現在幾點？', en:"What time is it now?"}, {zh:'現在三點。', en:"It's three o'clock now."}] }] },
+            { id: 72, unit: 4, word: '分', zhuyin: 'ㄈㄣ', pinyin: 'fēn', def: [{ pos: 'M', en: 'minute', eg: [{zh:'現在是三點五分。', en:"It's 3:05 now."}] }] },
+            { id: 73, unit: 4, word: '分鐘', zhuyin: 'ㄈㄣ ㄓㄨㄥ', pinyin: 'fēnzhōng', def: [{ pos: 'M', en: 'minute (duration)', eg: [{zh:'我等了三十分鐘。', en:'I waited for thirty minutes.'}] }] },
+            { id: 98, unit: 4, word: '號', zhuyin: 'ㄏㄠˋ', pinyin: 'hào', def: [{ pos: 'M', en: 'number, date', eg: [{zh:'今天是幾月幾號？', en:'What is the date today?'}, {zh:'今天是十月十號。', en:"Today is October 10th."}] }] },
+            { id: 104, unit: 4, word: '後', zhuyin: 'ㄏㄡˋ', pinyin: 'hòu', def: [{ pos: 'N', en: 'after, back, behind', eg: [{zh:'下課後，我要回家。', en:"After class, I'm going home."}, {zh:'他在你後面。', en:'He is behind you.'}] }] },
+            { id: 105, unit: 4, word: '後年', zhuyin: 'ㄏㄡˋ ㄋㄧㄢˊ', pinyin: 'hòunián', def: [{ pos: 'N', en: 'the year after next', eg: [{zh:'我後年想去日本玩。', en:'I want to go to Japan the year after next.'}] }] },
+            { id: 106, unit: 4, word: '後天', zhuyin: 'ㄏㄡˋ ㄊㄧㄢ', pinyin: 'hòutiān', def: [{ pos: 'N', en: 'the day after tomorrow', eg: [{zh:'我們後天去看電影吧！', en:"Let's go watch a movie the day after tomorrow!"}] }] },
+            { id: 132, unit: 4, word: '今年', zhuyin: 'ㄐㄧㄣ ㄋㄧㄢˊ', pinyin: 'jīnnián', def: [{ pos: 'N', en: 'this year', eg: [{zh:'我今年二十歲。', en:'I am twenty years old this year.'}] }] },
+            { id: 133, unit: 4, word: '今天', zhuyin: 'ㄐㄧㄣ ㄊㄧㄢ', pinyin: 'jīntiān', def: [{ pos: 'N', en: 'today', eg: [{zh:'今天天氣很好。', en:"The weather is very good today."}] }] },
+            { id: 187, unit: 4, word: '明年', zhuyin: 'ㄇㄧㄥˊ ㄋㄧㄢˊ', pinyin: 'míngnián', def: [{ pos: 'N', en: 'next year', eg: [{zh:'我明年要去美國念書。', en:'I am going to study in the US next year.'}] }] },
+            { id: 188, unit: 4, word: '明天', zhuyin: 'ㄇㄧㄥˊ ㄊㄧㄢ', pinyin: 'míngtiān', def: [{ pos: 'N', en: 'tomorrow', eg: [{zh:'明天見！', en:'See you tomorrow!'}, {zh:'明天會下雨。', en:'It will rain tomorrow.'}] }] },
+            { id: 198, unit: 4, word: '年', zhuyin: 'ㄋㄧㄢˊ', pinyin: 'nián', def: [{ pos: 'M', en: 'year', eg: [{zh:'我在台灣住了三年。', en:'I have lived in Taiwan for three years.'}] }] },
+            { id: 205, unit: 4, word: '去年', zhuyin: 'ㄑㄩˋ ㄋㄧㄢˊ', pinyin: 'qùnián', def: [{ pos: 'N', en: 'last year', eg: [{zh:'我去年去過日本。', en:'I went to Japan last year.'}] }] },
+            { id: 220, unit: 4, word: '上午', zhuyin: 'ㄕㄤˋ ㄨˇ', pinyin: 'shàngwǔ', def: [{ pos: 'N', en: 'morning (AM)', eg: [{zh:'我今天上午有課。', en:'I have class this morning.'}] }] },
+            { id: 229, unit: 4, word: '時候', zhuyin: 'ㄕˊ ㄏㄡˋ', pinyin: 'shíhòu', def: [{ pos: 'N', en: 'time, moment', eg: [{zh:'你什麼時候有空？', en:'When are you free?'}, {zh:'小時候，我住在鄉下。', en:'When I was young, I lived in the countryside.'}] }] },
+            { id: 230, unit: 4, word: '時間', zhuyin: 'ㄕˊ ㄐㄧㄢ', pinyin: 'shíjiān', def: [{ pos: 'N', en: 'time (duration)', eg: [{zh:'你有時間嗎？', en:'Do you have time?'}, {zh:'我沒有時間吃飯。', en:"I don't have time to eat."}] }] },
+            { id: 279, unit: 4, word: '晚上', zhuyin: 'ㄨㄢˇ ㄕㄤˋ', pinyin: 'wǎnshang', def: [{ pos: 'N', en: 'evening, night', eg: [{zh:'我今天晚上要去看電影。', en:'I am going to watch a movie tonight.'}] }] },
+            { id: 290, unit: 4, word: '下午', zhuyin: 'ㄒㄧㄚˋ ㄨˇ', pinyin: 'xiàwǔ', def: [{ pos: 'N', en: 'afternoon', eg: [{zh:'我今天下午沒課。', en:'I have no class this afternoon.'}] }] },
+            { id: 292, unit: 4, word: '小時', zhuyin: 'ㄒㄧㄠˇ ㄕˊ', pinyin: 'xiǎoshí', def: [{ pos: 'M', en: 'hour', eg: [{zh:'我每天運動一個小時。', en:'I exercise for one hour every day.'}] }] },
+            { id: 315, unit: 4, word: '現在', zhuyin: 'ㄒㄧㄢˋ ㄗㄞˋ', pinyin: 'xiànzài', def: [{ pos: 'N', en: 'now', eg: [{zh:'現在幾點？', en:'What time is it now?'}] }] },
+            { id: 351, unit: 4, word: '早上', zhuyin: 'ㄗㄠˇ ㄕㄤˋ', pinyin: 'zǎoshang', def: [{ pos: 'N', en: 'morning (early)', eg: [{zh:'我今天早上六點起床。', en:"I got up at 6 o'clock this morning."}] }] },
+            { id: 386, unit: 4, word: '中午', zhuyin: 'ㄓㄨㄥ ㄨˇ', pinyin: 'zhōngwǔ', def: [{ pos: 'N', en: 'noon, midday', eg: [{zh:'你中午想吃什麼？', en:'What do you want to eat for lunch?'}] }] },
+            { id: 389, unit: 4, word: '週末', zhuyin: 'ㄓㄡ ㄇㄛˋ', pinyin: 'zhōumò', def: [{ pos: 'N', en: 'weekend', eg: [{zh:'你這個週末有什麼計畫？', en:'What are your plans for this weekend?'}] }] },
+            { id: 400, unit: 4, word: '昨天', zhuyin: 'ㄗㄨㄛˊ ㄊㄧㄢ', pinyin: 'zuótiān', def: [{ pos: 'N', en: 'yesterday', eg: [{zh:'我昨天去看電影了。', en:'I went to see a movie yesterday.'}] }] },
+            // U5: Food & Drink (22)
+            { id: 18, unit: 5, word: '杯', zhuyin: 'ㄅㄟ', pinyin: 'bēi', def: [{ pos: 'M', en: '(cup of)', eg: [{zh:'請給我一杯水。', en:'Please give me a cup of water.'}] }] },
+            { id: 25, unit: 5, word: '菜', zhuyin: 'ㄘㄞˋ', pinyin: 'cài', def: [{ pos: 'N', en: 'vegetable, dish', eg: [{zh:'多吃蔬菜對身體好。', en:'Eating more vegetables is good for your health.'}, {zh:'媽媽做的菜很好吃。', en:"My mom's cooking is delicious."}] }] },
+            { id: 29, unit: 5, word: '茶', zhuyin: 'ㄔㄚˊ', pinyin: 'chá', def: [{ pos: 'N', en: 'tea', eg: [{zh:'你喜歡喝茶還是咖啡？', en:'Do you like to drink tea or coffee?'}] }] },
+            { id: 31, unit: 5, word: '吃', zhuyin: 'ㄔ', pinyin: 'chī', def: [{ pos: 'V', en: 'to eat', eg: [{zh:'你吃飯了嗎？', en:'Have you eaten?'}, {zh:'我喜歡吃台灣小吃。', en:'I like to eat Taiwanese snacks.'}] }] },
+            { id: 70, unit: 5, word: '飯', zhuyin: 'ㄈㄢˋ', pinyin: 'fàn', def: [{ pos: 'N', en: 'rice, meal', eg: [{zh:'我想吃飯。', en:'I want to eat (a meal).'}, {zh:'晚餐你想吃什麼？', en:'What do you want to eat for dinner?'}] }] },
+            { id: 91, unit: 5, word: '果汁', zhuyin: 'ㄍㄨㄛˇ ㄓ', pinyin: 'guǒzhī', def: [{ pos: 'N', en: 'juice', eg: [{zh:'我早餐都喝一杯果汁。', en:'I drink a glass of juice for breakfast.'}] }] },
+            { id: 97, unit: 5, word: '喝', zhuyin: 'ㄏㄜ', pinyin: 'hē', def: [{ pos: 'V', en: 'to drink', eg: [{zh:'天氣很熱，要多喝水。', en:"It's hot, you should drink more water."}] }] },
+            { id: 142, unit: 5, word: '酒', zhuyin: 'ㄐㄧㄡˇ', pinyin: 'jiǔ', def: [{ pos: 'N', en: 'alcohol, wine', eg: [{zh:'他不能喝酒。', en:'He cannot drink alcohol.'}] }] },
+            { id: 144, unit: 5, word: '咖啡', zhuyin: 'ㄎㄚ ㄈㄟ', pinyin: 'kāfēi', def: [{ pos: 'N', en: 'coffee', eg: [{zh:'我每天早上都要喝一杯咖啡。', en:'I have a cup of coffee every morning.'}] }] },
+            { id: 153, unit: 5, word: '塊', zhuyin: 'ㄎㄨㄞˋ', pinyin: 'kuài', def: [{ pos: 'M', en: '(for money, pieces)', eg: [{zh:'這本書一百塊。', en:'This book is 100 dollars.'}, {zh:'請給我一塊蛋糕。', en:'Please give me a piece of cake.'}] }] },
+            { id: 185, unit: 5, word: '麵', zhuyin: 'ㄇㄧㄢˋ', pinyin: 'miàn', def: [{ pos: 'N', en: 'noodles', eg: [{zh:'台灣的牛肉麵很有名。', en:"Taiwan's beef noodle soup is very famous."}] }] },
+            { id: 186, unit: 5, word: '麵包', zhuyin: 'ㄇㄧㄢˋ ㄅㄠ', pinyin: 'miànbāo', def: [{ pos: 'N', en: 'bread', eg: [{zh:'這家麵包店的麵包很好吃。', en:"The bread from this bakery is delicious."}] }] },
+            { id: 195, unit: 5, word: '牛奶', zhuyin: 'ㄋㄧㄡˊ ㄋㄞˇ', pinyin: 'niúnǎi', def: [{ pos: 'N', en: 'milk', eg: [{zh:'我喜歡喝牛奶。', en:'I like to drink milk.'}] }] },
+            { id: 209, unit: 5, word: '肉', zhuyin: 'ㄖㄡˋ', pinyin: 'ròu', def: [{ pos: 'N', en: 'meat', eg: [{zh:'我不吃肉。', en:"I don't eat meat."}] }] },
+            { id: 236, unit: 5, word: '水', zhuyin: 'ㄕㄨㄟˇ', pinyin: 'shuǐ', def: [{ pos: 'N', en: 'water', eg: [{zh:'請給我一杯水。', en:'Please give me a glass of water.'}] }] },
+            { id: 237, unit: 5, word: '水果', zhuyin: 'ㄕㄨㄟˇ ㄍㄨㄛˇ', pinyin: 'shuǐguǒ', def: [{ pos: 'N', en: 'fruit', eg: [{zh:'台灣的水果很好吃。', en:'Taiwanese fruit is delicious.'}] }] },
+            { id: 278, unit: 5, word: '碗', zhuyin: 'ㄨㄢˇ', pinyin: 'wǎn', def: [{ pos: 'M', en: '(bowl of)', eg: [{zh:'我想吃一碗牛肉麵。', en:'I want to eat a bowl of beef noodles.'}] }] },
+            { id: 289, unit: 5, word: '小吃', zhuyin: 'ㄒㄧㄠˇ ㄔ', pinyin: 'xiǎochī', def: [{ pos: 'N', en: 'snack', eg: [{zh:'夜市有很多台灣小吃。', en:'There are many Taiwanese snacks at the night market.'}] }] },
+            { id: 327, unit: 5, word: '一塊(兒)', zhuyin: 'ㄧˊ ㄎㄨㄞˋ (ㄦ)', pinyin: 'yíkuài(r)', def: [{ pos: 'A', en: 'together', eg: [{zh:'我們一塊去吃飯吧！', en:"Let's go eat together!"}] }] },
+            { id: 328, unit: 5, word: '一起', zhuyin: 'ㄧˋ ㄑㄧˇ', pinyin: 'yìqǐ', def: [{ pos: 'A', en: 'together', eg: [{zh:'我們一起去看電影。', en:'We are going to see a movie together.'}] }] },
+            { id: 334, unit: 5, word: '油', zhuyin: 'ㄧㄡˊ', pinyin: 'yóu', def: [{ pos: 'N', en: 'oil', eg: [{zh:'這個菜太油了。', en:'This dish is too oily.'}] }] },
+            { id: 343, unit: 5, word: '找', zhuyin: 'ㄓㄠˇ', pinyin: 'zhǎo', def: [{ pos: 'V', en: 'to look for, to give change', eg: [{zh:'我在找我的手機。', en:'I am looking for my cellphone.'}, {zh:'找你五塊錢。', en:"Here's five dollars in change for you."}] }] },
+            { id: 28, unit: 6, word: '唱', zhuyin: 'ㄔㄤˋ', pinyin: 'chàng', def: [{ pos: 'V', en: 'to sing', eg: [{zh:'他很會唱歌。', en:'He can sing very well.'}] }] },
+            { id: 35, unit: 6, word: '穿', zhuyin: 'ㄔㄨㄢ', pinyin: 'chuān', def: [{ pos: 'V', en: 'to wear, to put on', eg: [{zh:'今天很冷，要多穿一點衣服。', en:"It's cold today, you should wear more clothes."}] }] },
+            { id: 40, unit: 6, word: '打', zhuyin: 'ㄉㄚˇ', pinyin: 'dǎ', def: [{ pos: 'V', en: 'to hit, to play', eg: [{zh:'不要打人。', en:"Don't hit people."}, {zh:'他喜歡打籃球。', en:'He likes to play basketball.'}] }] },
+            { id: 43, unit: 6, word: '到', zhuyin: 'ㄉㄠˋ', pinyin: 'dào', def: [{ pos: 'V', en: 'to arrive, to go to', eg: [{zh:'我到家了。', en:"I've arrived home."}, {zh:'我明天會到學校。', en:'I will be at school tomorrow.'}] }] },
+            { id: 46, unit: 6, word: '得', zhuyin: 'ㄉㄜ˙', pinyin: 'de', def: [{ pos: 'P', en: '(structural particle)', eg: [{zh:'他說得很好。', en:'He speaks very well.'}, {zh:'你跑得真快。', en:'You run really fast.'}] }] },
+            { id: 47, unit: 6, word: '等', zhuyin: 'ㄉㄥˇ', pinyin: 'děng', def: [{ pos: 'V', en: 'to wait', eg: [{zh:'請等一下。', en:'Please wait a moment.'}, {zh:'我在等朋友。', en:'I am waiting for a friend.'}] }] },
+            { id: 53, unit: 6, word: '懂', zhuyin: 'ㄉㄨㄥˇ', pinyin: 'dǒng', def: [{ pos: 'V', en: 'to understand', eg: [{zh:'你懂我的意思嗎？', en:'Do you understand my meaning?'}, {zh:'老師說的，我都懂。', en:'I understand everything the teacher said.'}] }] },
+            { id: 88, unit: 6, word: '給', zhuyin: 'ㄍㄟˇ', pinyin: 'gěi', def: [{ pos: 'V', en: 'to give', eg: [{zh:'請你給我一本書。', en:'Please give me a book.'}] }, { pos: 'P', en: 'for, to', eg: [{zh:'他買了一本書給我。', en:'He bought a book for me.'}] }] },
+            { id: 108, unit: 6, word: '畫', zhuyin: 'ㄏㄨㄚˋ', pinyin: 'huà', def: [{ pos: 'V', en: 'to draw, to paint', eg: [{zh:'他畫得很好。', en:'He draws very well.'}] }, { pos: 'N', en: 'drawing, painting', eg: [{zh:'這是一幅有名的畫。', en:'This is a famous painting.'}] }] },
+            { id: 110, unit: 6, word: '回', zhuyin: 'ㄏㄨㄟˊ', pinyin: 'huí', def: [{ pos: 'V', en: 'to return', eg: [{zh:'我下午五點回家。', en:'I return home at 5 PM.'}] }] },
+            { id: 111, unit: 6, word: '會', zhuyin: 'ㄏㄨㄟˋ', pinyin: 'huì', def: [{ pos: 'Vaux', en: 'can, to be able to', eg: [{zh:'我會說中文。', en:'I can speak Chinese.'}, {zh:'明天會下雨。', en:'It will rain tomorrow.'}] }] },
+            { id: 137, unit: 6, word: '進', zhuyin: 'ㄐㄧㄣˋ', pinyin: 'jìn', def: [{ pos: 'V', en: 'to enter', eg: [{zh:'請進。', en:'Please come in.'}, {zh:'他走進了房間。', en:'He walked into the room.'}] }] },
+            { id: 147, unit: 6, word: '看', zhuyin: 'ㄎㄢˋ', pinyin: 'kàn', def: [{ pos: 'V', en: 'to see, to look at, to watch', eg: [{zh:'你看！那裡有一隻貓。', en:'Look! There is a cat over there.'}, {zh:'我喜歡看電影。', en:'I like to watch movies.'}] }] },
+            { id: 148, unit: 6, word: '看見', zhuyin: 'ㄎㄢˋ ㄐㄧㄢˋ', pinyin: 'kànjiàn', def: [{ pos: 'V', en: 'to see', eg: [{zh:'你看見我的手機了嗎？', en:'Did you see my phone?'}] }] },
+            { id: 157, unit: 6, word: '來', zhuyin: 'ㄌㄞˊ', pinyin: 'lái', def: [{ pos: 'V', en: 'to come', eg: [{zh:'歡迎你來台灣。', en:'Welcome to Taiwan.'}, {zh:'他來我家玩。', en:'He came to my house to hang out.'}] }] },
+            { id: 15, unit: 7, word: '邊', zhuyin: 'ㄅㄧㄢ', pinyin: 'biān', def: [{ pos: 'N', en: 'side', eg: [{zh:'我在你旁邊。', en:'I am beside you.'}] }] },
+            { id: 51, unit: 7, word: '地方', zhuyin: 'ㄉㄧˋ ㄈㄤ', pinyin: 'dìfāng', def: [{ pos: 'N', en: 'place', eg: [{zh:'這個地方很漂亮。', en:'This place is very beautiful.'}] }] },
+            { id: 62, unit: 7, word: '東', zhuyin: 'ㄉㄨㄥ', pinyin: 'dōng', def: [{ pos: 'N', en: 'east', eg: [{zh:'太陽從東邊出來。', en:'The sun rises from the east.'}] }] },
+            { id: 63, unit: 7, word: '東西', zhuyin: 'ㄉㄨㄥ ㄒㄧ', pinyin: 'dōngxi', def: [{ pos: 'N', en: 'thing', eg: [{zh:'你買了什麼東西？', en:'What did you buy?'}] }] },
+            { id: 89, unit: 7, word: '共', zhuyin: 'ㄍㄨㄥˋ', pinyin: 'gòng', def: [{ pos: 'A', en: 'altogether, in total', eg: [{zh:'三本書，一共三百塊。', en:'Three books, 300 dollars in total.'}] }] },
+            { id: 90, unit: 7, word: '公園', zhuyin: 'ㄍㄨㄥ ㄩㄢˊ', pinyin: 'gōngyuán', def: [{ pos: 'N', en: 'park', eg: [{zh:'我喜歡去公園散步。', en:'I like to take a walk in the park.'}] }] },
+            { id: 165, unit: 7, word: '裡', zhuyin: 'ㄌㄧˇ', pinyin: 'lǐ', def: [{ pos: 'N', en: 'inside', eg: [{zh:'房子裡有什麼？', en:'What is inside the house?'}] }] },
+            { id: 189, unit: 7, word: '南', zhuyin: 'ㄋㄢˊ', pinyin: 'nán', def: [{ pos: 'N', en: 'south', eg: [{zh:'台灣的南邊天氣很好。', en:'The weather in the south of Taiwan is very good.'}] }] },
+            { id: 219, unit: 7, word: '上', zhuyin: 'ㄕㄤˋ', pinyin: 'shàng', def: [{ pos: 'N', en: 'up, on', eg: [{zh:'桌子上面有本書。', en:'There is a book on the table.'}] }, { pos: 'V', en: 'to go up, to attend', eg: [{zh:'我明天要上課。', en:'I have class tomorrow.'}] }] },
+            { id: 221, unit: 7, word: '上邊', zhuyin: 'ㄕㄤˋ ㄅㄧㄢ', pinyin: 'shàngbiān', def: [{ pos: 'N', en: 'above, on top', eg: [{zh:'飛機在白雲的上邊。', en:'The airplane is above the white clouds.'}] }] },
+            { id: 226, unit: 7, word: '市', zhuyin: 'ㄕˋ', pinyin: 'shì', def: [{ pos: 'N', en: 'city', eg: [{zh:'台北市很熱鬧。', en:'Taipei City is very lively.'}] }] },
+            { id: 250, unit: 7, word: '圖書館', zhuyin: 'ㄊㄨˊ ㄕㄨ ㄍㄨㄢˇ', pinyin: 'túshūguǎn', def: [{ pos: 'N', en: 'library', eg: [{zh:'我常去圖書館看書。', en:'I often go to the library to read.'}] }] },
+            { id: 284, unit: 7, word: '外', zhuyin: 'ㄨㄞˋ', pinyin: 'wài', def: [{ pos: 'N', en: 'outside', eg: [{zh:'外面下雨了。', en:'It is raining outside.'}] }] },
+            { id: 288, unit: 7, word: '西', zhuyin: 'ㄒㄧ', pinyin: 'xī', def: [{ pos: 'N', en: 'west', eg: [{zh:'台灣的西邊是台灣海峽。', en:'To the west of Taiwan is the Taiwan Strait.'}] }] },
+            { id: 293, unit: 7, word: '下面', zhuyin: 'ㄒㄧㄚˋ ㄇㄧㄢˋ', pinyin: 'xiàmiàn', def: [{ pos: 'N', en: 'below, under', eg: [{zh:'桌子下面有一隻貓。', en:'There is a cat under the table.'}] }] },
+            { id: 320, unit: 7, word: '學校', zhuyin: 'ㄒㄩㄝˊ ㄒㄧㄠˋ', pinyin: 'xuéxiào', def: [{ pos: 'N', en: 'school', eg: [{zh:'我家離學校很近。', en:'My home is very close to the school.'}] }] },
+            { id: 339, unit: 7, word: '右', zhuyin: 'ㄧㄡˋ', pinyin: 'yòu', def: [{ pos: 'N', en: 'right (direction)', eg: [{zh:'請往右轉。', en:'Please turn right.'}] }] },
+            { id: 385, unit: 7, word: '中', zhuyin: 'ㄓㄨㄥ', pinyin: 'zhōng', def: [{ pos: 'N', en: 'center, middle', eg: [{zh:'我站在他們兩個中間。', en:'I am standing between the two of them.'}] }] },
+            { id: 387, unit: 7, word: '中間', zhuyin: 'ㄓㄨㄥ ㄐㄧㄢ', pinyin: 'zhōngjiān', def: [{ pos: 'N', en: 'middle, between', eg: [{zh:'郵局在銀行和學校中間。', en:'The post office is between the bank and the school.'}] }] },
+            { id: 401, unit: 7, word: '左', zhuyin: 'ㄗㄨㄛˇ', pinyin: 'zuǒ', def: [{ pos: 'N', en: 'left (direction)', eg: [{zh:'圖書館在你的左邊。', en:'The library is on your left.'}] }] },
+            { id: 30, unit: 8, word: '車', zhuyin: 'ㄔㄜ', pinyin: 'chē', def: [{ pos: 'N', en: 'vehicle, car', eg: [{zh:'我每天開車上班。', en:'I drive to work every day.'}] }] },
+            { id: 36, unit: 8, word: '出', zhuyin: 'ㄔㄨ', pinyin: 'chū', def: [{ pos: 'V', en: 'to go out', eg: [{zh:'他出去了。', en:'He went out.'}, {zh:'太陽出來了。', en:'The sun came out.'}] }] },
+            { id: 41, unit: 8, word: '搭', zhuyin: 'ㄉㄚ', pinyin: 'dā', def: [{ pos: 'V', en: 'to take (transport)', eg: [{zh:"我明天要搭飛機去美國。", en:"I'm taking a plane to the US tomorrow."}] }] },
+            { id: 71, unit: 8, word: '飛機', zhuyin: 'ㄈㄟ ㄐㄧ', pinyin: 'fēijī', def: [{ pos: 'N', en: 'airplane', eg: [{zh:'搭飛機很方便。', en:'Taking an airplane is very convenient.'}] }] },
+            { id: 99, unit: 8, word: '火車', zhuyin: 'ㄏㄨㄛˇ ㄔㄜ', pinyin: 'huǒchē', def: [{ pos: 'N', en: 'train', eg: [{zh:'我喜歡坐火車旅行。', en:'I like to travel by train.'}] }] },
+            { id: 100, unit: 8, word: '火車站', zhuyin: 'ㄏㄨㄛˇ ㄔㄜ ㄓㄢˋ', pinyin: 'huǒchēzhàn', def: [{ pos: 'N', en: 'train station', eg: [{zh:'請問火車站在哪裡？', en:'Excuse me, where is the train station?'}] }] },
+            { id: 145, unit: 8, word: '開', zhuyin: 'ㄎㄞ', pinyin: 'kāi', def: [{ pos: 'V', en: 'to drive, to open', eg: [{zh:'我爸爸開車載我上學。', en:'My father drives me to school.'}, {zh:'請開門。', en:'Please open the door.'}] }] },
+            { id: 169, unit: 8, word: '路', zhuyin: 'ㄌㄨˋ', pinyin: 'lù', def: [{ pos: 'N', en: 'road', eg: [{zh:'這條路很長。', en:'This road is very long.'}] }] },
+            { id: 173, unit: 8, word: '賣', zhuyin: 'ㄇㄞˋ', pinyin: 'mài', def: [{ pos: 'V', en: 'to sell', eg: [{zh:'這家店賣什麼？', en:'What does this store sell?'}] }] },
+            { id: 174, unit: 8, word: '慢', zhuyin: 'ㄇㄢˋ', pinyin: 'màn', def: [{ pos: 'Vs', en: 'slow', eg: [{zh:'請說慢一點。', en:'Please speak a little slower.'}] }] },
+            { id: 206, unit: 8, word: '騎', zhuyin: 'ㄑㄧˊ', pinyin: 'qí', def: [{ pos: 'V', en: 'to ride (bike, motorcycle)', eg: [{zh:'他每天騎車上學。', en:'He rides a bike/scooter to school every day.'}] }] },
+            { id: 254, unit: 8, word: '票', zhuyin: 'ㄆㄧㄠˋ', pinyin: 'piào', def: [{ pos: 'N', en: 'ticket', eg: [{zh:'我買了兩張電影票。', en:'I bought two movie tickets.'}] }] },
+            { id: 349, unit: 8, word: '站', zhuyin: 'ㄓㄢˋ', pinyin: 'zhàn', def: [{ pos: 'N', en: 'station', eg: [{zh:'下一站是台北車站。', en:'The next stop is Taipei Main Station.'}] }, { pos: 'V', en: 'to stand', eg: [{zh:'請站起來。', en:'Please stand up.'}] }] },
+            { id: 399, unit: 8, word: '走', zhuyin: 'ㄗㄡˇ', pinyin: 'zǒu', def: [{ pos: 'V', en: 'to walk, to go', eg: [{zh:'我每天走路去上學。', en:'I walk to school every day.'}, {zh:'我們走吧！', en:"Let's go!"}] }] },
+            { id: 402, unit: 8, word: '坐', zhuyin: 'ㄗㄨㄛˋ', pinyin: 'zuò', def: [{ pos: 'V', en: 'to sit, to take (transport)', eg: [{zh:'請坐。', en:'Please sit.'}, {zh:'我喜歡坐火車。', en:'I like to take the train.'}] }] },
+            { id: 403, unit: 8, word: '做', zhuyin: 'ㄗㄨㄛˋ', pinyin: 'zuò', def: [{ pos: 'V', en: 'to do, to make', eg: [{zh:'你在做什麼？', en:'What are you doing?'}, {zh:'媽媽做的菜很好吃。', en:"My mom's cooking is delicious."}] }] },
+            { id: 17, unit: 9, word: '包', zhuyin: 'ㄅㄠ', pinyin: 'bāo', def: [{ pos: 'N', en: 'bag', eg: [{zh:'我的包包裡有書。', en:'There are books in my bag.'}] }, { pos: 'V', en: 'to wrap', eg: [{zh:'請幫我把禮物包起來。', en:'Please help me wrap the gift.'}] }] },
+            { id: 175, unit: 9, word: '毛', zhuyin: 'ㄇㄠˊ', pinyin: 'máo', def: [{ pos: 'N', en: 'fur, hair', eg: [{zh:'這件毛衣很暖和。', en:'This sweater is very warm.'}] }, { pos: 'M', en: 'dime, 10 cents', eg: [{zh:'這本書五塊三毛錢。', en:'This book is 5 dollars and 30 cents.'}] }] },
+            { id: 176, unit: 9, word: '毛衣', zhuyin: 'ㄇㄠˊ ㄧ', pinyin: 'máoyī', def: [{ pos: 'N', en: 'sweater', eg: [{zh:'天氣冷，要穿毛衣。', en:"It's cold, you should wear a sweater."}] }] },
+            { id: 180, unit: 9, word: '帽子', zhuyin: 'ㄇㄠˋ ˙ㄗ', pinyin: 'màozi', def: [{ pos: 'N', en: 'hat, cap', eg: [{zh:'今天太陽很大，要戴帽子。', en:"The sun is big today, you should wear a hat."}] }] },
+            { id: 263, unit: 9, word: '裙子', zhuyin: 'ㄑㄩㄣˊ ˙ㄗ', pinyin: 'qúnzi', def: [{ pos: 'N', en: 'skirt, dress', eg: [{zh:'她穿了一件漂亮的裙子。', en:'She is wearing a beautiful dress.'}] }] },
+            { id: 286, unit: 9, word: '襪子', zhuyin: 'ㄨㄚˋ ˙ㄗ', pinyin: 'wàzi', def: [{ pos: 'N', en: 'socks', eg: [{zh:'我找不到我的襪子。', en:"I can't find my socks."}] }] },
+            { id: 297, unit: 9, word: '鞋', zhuyin: 'ㄒㄧㄝˊ', pinyin: 'xié', def: [{ pos: 'N', en: 'shoes', eg: [{zh:'這雙鞋很舒服。', en:'This pair of shoes is very comfortable.'}] }] },
+            { id: 301, unit: 9, word: '衣服', zhuyin: 'ㄧ ㄈㄨˊ', pinyin: 'yīfu', def: [{ pos: 'N', en: 'clothes', eg: [{zh:'我買了新衣服。', en:'I bought new clothes.'}] }] },
+            { id: 340, unit: 9, word: '元', zhuyin: 'ㄩㄢˊ', pinyin: 'yuán', def: [{ pos: 'M', en: 'dollar', eg: [{zh:'這件衣服一百元。', en:'This piece of clothing is 100 dollars.'}] }] },
+            { id: 342, unit: 9, word: '找錢', zhuyin: 'ㄓㄠˇ ㄑㄧㄢˊ', pinyin: 'zhǎoqián', def: [{ pos: 'V-sep', en: 'to give change', eg: [{zh:'我給你一百塊，你找我錢。', en:'I give you 100 dollars, you give me change.'}] }] },
+            { id: 381, unit: 9, word: '枝', zhuyin: 'ㄓ', pinyin: 'zhī', def: [{ pos: 'M', en: '(for pens, etc.)', eg: [{zh:'我買了三枝筆。', en:'I bought three pens.'}] }] },
+            { id: 395, unit: 9, word: '種', zhuyin: 'ㄓㄨㄥˇ', pinyin: 'zhǒng', def: [{ pos: 'M', en: 'kind, type', eg: [{zh:'你喜歡哪種水果？', en:'Which kind of fruit do you like?'}] }] },
+            { id: 154, unit: 9, word: '褲子', zhuyin: 'ㄎㄨˋ ˙ㄗ', pinyin: 'kùzi', def: [{ pos: 'N', en: 'pants, trousers', eg: [{zh:'這件褲子太長了。', en:'This pair of pants is too long.'}] }] },
+            { id: 172, unit: 9, word: '買', zhuyin: 'ㄇㄞˇ', pinyin: 'mǎi', def: [{ pos: 'V', en: 'to buy', eg: [{zh:'我想買一本書。', en:'I want to buy a book.'}] }] },
+            { id: 365, unit: 9, word: '錢', zhuyin: 'ㄑㄧㄢˊ', pinyin: 'qián', def: [{ pos: 'N', en: 'money', eg: [{zh:'你有錢嗎？', en:'Do you have money?'}] }] },
+            { id: 64, unit: 10, word: '風', zhuyin: 'ㄈㄥ', pinyin: 'fēng', def: [{ pos: 'N', en: 'wind', eg: [{zh:'今天的風很大。', en:"Today's wind is very strong."}] }] },
+            { id: 161, unit: 10, word: '冷', zhuyin: 'ㄌㄥˇ', pinyin: 'lěng', def: [{ pos: 'Vs', en: 'cold', eg: [{zh:'今天很冷。', en:'It is cold today.'}] }] },
+            { id: 163, unit: 10, word: '亮', zhuyin: 'ㄌㄧㄤˋ', pinyin: 'liàng', def: [{ pos: 'Vs', en: 'bright, light', eg: [{zh:'天亮了。', en:'The sky is bright (daybreak).'}, {zh:'這個房間很亮。', en:'This room is very bright.'}] }] },
+            { id: 208, unit: 10, word: '熱', zhuyin: 'ㄖㄜˋ', pinyin: 'rè', def: [{ pos: 'Vs', en: 'hot', eg: [{zh:'今天很熱。', en:'It is hot today.'}, {zh:'這杯茶很熱。', en:'This cup of tea is very hot.'}] }] },
+            { id: 216, unit: 10, word: '山', zhuyin: 'ㄕㄢ', pinyin: 'shān', def: [{ pos: 'N', en: 'mountain', eg: [{zh:'我喜歡爬山。', en:'I like to climb mountains.'}] }] },
+            { id: 243, unit: 10, word: '太陽', zhuyin: 'ㄊㄞˋ ㄧㄤˊ', pinyin: 'tàiyáng', def: [{ pos: 'N', en: 'sun', eg: [{zh:'今天太陽很大。', en:'The sun is very big today.'}] }] },
+            { id: 245, unit: 10, word: '天', zhuyin: 'ㄊㄧㄢ', pinyin: 'tiān', def: [{ pos: 'N', en: 'day, sky', eg: [{zh:'今天天氣很好。', en:"Today's weather is good."}, {zh:'天上有白雲。', en:'There are white clouds in the sky.'}] }] },
+            { id: 246, unit: 10, word: '天氣', zhuyin: 'ㄊㄧㄢ ㄑㄧˋ', pinyin: 'tiānqì', def: [{ pos: 'N', en: 'weather', eg: [{zh:'今天天氣怎麼樣？', en:"How is the weather today?"}] }] },
+            { id: 285, unit: 10, word: '外頭', zhuyin: 'ㄨㄞˋ ㄊㄡˊ', pinyin: 'wàitou', def: [{ pos: 'N', en: 'outside', eg: [{zh:'外頭很冷，多穿件衣服。', en:"It's cold outside, wear more clothes."}] }] },
+            { id: 294, unit: 10, word: '下雨', zhuyin: 'ㄒㄧㄚˋ ㄩˇ', pinyin: 'xiàyǔ', def: [{ pos: 'V-sep', en: 'to rain', eg: [{zh:'外面在下雨。', en:'It is raining outside.'}] }] },
+            { id: 337, unit: 10, word: '雨', zhuyin: 'ㄩˇ', pinyin: 'yǔ', def: [{ pos: 'N', en: 'rain', eg: [{zh:'今天的雨下得很大。', en:"Today's rain is falling heavily."}] }] },
+            { id: 338, unit: 10, word: '月亮', zhuyin: 'ㄩㄝˋ ㄌㄧㄤˋ', pinyin: 'yüèliàng', def: [{ pos: 'N', en: 'moon', eg: [{zh:'今天的月亮很圓。', en:"Tonight's moon is very round."}] }] },
+            { id: 344, unit: 10, word: '月', zhuyin: 'ㄩㄝˋ', pinyin: 'yuè', def: [{ pos: 'N', en: 'month', eg: [{zh:'一年有十二個月。', en:'There are twelve months in a year.'}] }] },
+            { id: 345, unit: 10, word: '雲', zhuyin: 'ㄩㄣˊ', pinyin: 'yún', def: [{ pos: 'N', en: 'cloud', eg: [{zh:'天上的雲很白。', en:'The clouds in the sky are very white.'}] }] },
+            { id: 112, unit: 10, word: '晴天', zhuyin: 'ㄑㄧㄥˊ ㄊㄧㄢ', pinyin: 'qíngtiān', def: [{ pos: 'N', en: 'sunny day', eg: [{zh:'我喜歡晴天。', en:'I like sunny days.'}] }] },
+            { id: 20, unit: 11, word: '本子', zhuyin: 'ㄅㄣˇ ˙ㄗ', pinyin: 'běnzi', def: [{ pos: 'N', en: 'notebook', eg: [{zh:'請把功課寫在本子上。', en:'Please write the homework in the notebook.'}] }] },
+            { id: 21, unit: 11, word: '筆', zhuyin: 'ㄅㄧˇ', pinyin: 'bǐ', def: [{ pos: 'N', en: 'pen', eg: [{zh:'請借我一枝筆。', en:'Please lend me a pen.'}] }] },
+            { id: 55, unit: 11, word: '讀', zhuyin: 'ㄉㄨˊ', pinyin: 'dú', def: [{ pos: 'V', en: 'to read, to study', eg: [{zh:'我喜歡讀書。', en:'I like to read books.'}, {zh:'他在大學讀書。', en:'He is studying at the university.'}] }] },
+            { id: 109, unit: 11, word: '話', zhuyin: 'ㄏㄨㄚˋ', pinyin: 'huà', def: [{ pos: 'N', en: 'word, speech', eg: [{zh:'他說的話，我不懂。', en:"I don't understand what he said."}] }] },
+            { id: 113, unit: 11, word: '回答', zhuyin: 'ㄏㄨㄟˊ ㄉㄚˊ', pinyin: 'huídá', def: [{ pos: 'V', en: 'to answer', eg: [{zh:'請回答我的問題。', en:'Please answer my question.'}] }] },
+            { id: 150, unit: 11, word: '課', zhuyin: 'ㄎㄜˋ', pinyin: 'kè', def: [{ pos: 'N', en: 'class, lesson', eg: [{zh:'我今天有中文課。', en:'I have Chinese class today.'}] }] },
+            { id: 151, unit: 11, word: '課本', zhuyin: 'ㄎㄜˋ ㄅㄣˇ', pinyin: 'kèběn', def: [{ pos: 'N', en: 'textbook', eg: [{zh:'請打開課本。', en:'Please open the textbook.'}] }] },
+            { id: 194, unit: 11, word: '念', zhuyin: 'ㄋㄧㄢˋ', pinyin: 'niàn', def: [{ pos: 'V', en: 'to read aloud, to study', eg: [{zh:'請你念一遍課文。', en:'Please read the text once.'}, {zh:'他在大學念書。', en:'He studies at the university.'}] }] },
+            { id: 224, unit: 11, word: '上課', zhuyin: 'ㄕㄤˋ ㄎㄜˋ', pinyin: 'shàngkè', def: [{ pos: 'V-sep', en: 'to attend class', eg: [{zh:'我們九點上課。', en:'We start class at nine.'}] }] },
+            { id: 232, unit: 11, word: '書', zhuyin: 'ㄕㄨ', pinyin: 'shū', def: [{ pos: 'N', en: 'book', eg: [{zh:'我喜歡看書。', en:'I like to read books.'}] }] },
+            { id: 233, unit: 11, word: '書包', zhuyin: 'ㄕㄨ ㄅㄠ', pinyin: 'shūbāo', def: [{ pos: 'N', en: 'schoolbag', eg: [{zh:'我的書包很重。', en:'My schoolbag is very heavy.'}] }] },
+            { id: 247, unit: 11, word: '聽', zhuyin: 'ㄊㄧㄥ', pinyin: 'tīng', def: [{ pos: 'V', en: 'to listen', eg: [{zh:'我喜歡聽音樂。', en:'I like to listen to music.'}] }] },
+            { id: 248, unit: 11, word: '聽見', zhuyin: 'ㄊㄧㄥ ㄐㄧㄢˋ', pinyin: 'tīngjiàn', def: [{ pos: 'V', en: 'to hear', eg: [{zh:'你聽見了嗎？', en:'Did you hear that?'}] }] },
+            { id: 249, unit: 11, word: '同學', zhuyin: 'ㄊㄨㄥˊ ㄒㄩㄝˊ', pinyin: 'tóngxué', def: [{ pos: 'N', en: 'classmate', eg: [{zh:'他是我同學。', en:'He is my classmate.'}] }] },
+            { id: 287, unit: 11, word: '問', zhuyin: 'ㄨㄣˋ', pinyin: 'wèn', def: [{ pos: 'V', en: 'to ask', eg: [{zh:'我想問你一個問題。', en:'I want to ask you a question.'}] }] },
+            { id: 295, unit: 11, word: '下課', zhuyin: 'ㄒㄧㄚˋ ㄎㄜˋ', pinyin: 'xiàkè', def: [{ pos: 'V-sep', en: 'to finish class', eg: [{zh:'我們五點下課。', en:'Our class ends at five.'}] }] },
+            { id: 300, unit: 11, word: '寫', zhuyin: 'ㄒㄧㄝˇ', pinyin: 'xiě', def: [{ pos: 'V', en: 'to write', eg: [{zh:'請你寫下你的名字。', en:'Please write down your name.'}] }] },
+            { id: 317, unit: 11, word: '學', zhuyin: 'ㄒㄩㄝˊ', pinyin: 'xué', def: [{ pos: 'V', en: 'to learn, to study', eg: [{zh:'我正在學中文。', en:'I am learning Chinese.'}] }] },
+            { id: 319, unit: 11, word: '學習', zhuyin: 'ㄒㄩㄝˊ ㄒㄧˊ', pinyin: 'xuéxí', def: [{ pos: 'V', en: 'to learn, to study', eg: [{zh:'學習外語很有趣。', en:'Learning a foreign language is very interesting.'}] }] },
+            { id: 394, unit: 11, word: '字', zhuyin: 'ㄗˋ', pinyin: 'zì', def: [{ pos: 'N', en: 'character, word', eg: [{zh:'這個字怎麼念？', en:'How do you pronounce this character?'}] }] },
+            { id: 33, unit: 12, word: '球', zhuyin: 'ㄑㄧㄡˊ', pinyin: 'qiú', def: [{ pos: 'N', en: 'ball', eg: [{zh:'你喜歡打什麼球？', en:'What kind of ball game do you like to play?'}] }] },
+            { id: 59, unit: 12, word: '電影', zhuyin: 'ㄉㄧㄢˋ ㄧㄥˇ', pinyin: 'diànyǐng', def: [{ pos: 'N', en: 'movie', eg: [{zh:'我喜歡看電影。', en:'I like to watch movies.'}] }] },
+            { id: 60, unit: 12, word: '電視', zhuyin: 'ㄉㄧㄢˋ ㄕˋ', pinyin: 'diànshì', def: [{ pos: 'N', en: 'television', eg: [{zh:'他正在看電視。', en:'He is watching TV.'}] }] },
+            { id: 82, unit: 12, word: '歌', zhuyin: 'ㄍㄜ', pinyin: 'gē', def: [{ pos: 'N', en: 'song', eg: [{zh:'我喜歡聽中文歌。', en:'I like listening to Chinese songs.'}] }] },
+            { id: 107, unit: 12, word: '畫', zhuyin: 'ㄏㄨㄚˋ', pinyin: 'huà', def: [{ pos: 'N', en: 'drawing, painting', eg: [{zh:'這是一幅有名的畫。', en:'This is a famous painting.'}] }] },
+            { id: 124, unit: 12, word: '見', zhuyin: 'ㄐㄧㄢˋ', pinyin: 'jiàn', def: [{ pos: 'V', en: 'to see, to meet', eg: [{zh:'明天見！', en:'See you tomorrow!'}, {zh:'我很高興見到你。', en:'I am very happy to see you.'}] }] },
+            { id: 125, unit: 12, word: '見面', zhuyin: 'ㄐㄧㄢˋ ㄇㄧㄢˋ', pinyin: 'jiànmiàn', def: [{ pos: 'V-sep', en: 'to meet', eg: [{zh:'我們明天在哪裡見面？', en:'Where are we meeting tomorrow?'}] }] },
+            { id: 167, unit: 12, word: '信', zhuyin: 'ㄒㄧㄣˋ', pinyin: 'xìn', def: [{ pos: 'N', en: 'letter', eg: [{zh:'我收到一封信。', en:'I received a letter.'}] }] },
+            { id: 171, unit: 12, word: '玩', zhuyin: 'ㄨㄢˊ', pinyin: 'wán', def: [{ pos: 'V', en: 'to play', eg: [{zh:'他喜歡玩電腦遊戲。', en:'He likes to play computer games.'}, {zh:'歡迎來我家玩。', en:'Welcome to my home to hang out.'}] }] },
+            { id: 196, unit: 12, word: '年級', zhuyin: 'ㄋㄧㄢˊ ㄐㄧˊ', pinyin: 'niánjí', def: [{ pos: 'N', en: 'grade level', eg: [{zh:'我弟弟念小學三年級。', en:'My little brother is in the third grade of elementary school.'}] }] },
+            { id: 210, unit: 12, word: '散步', zhuyin: 'ㄙㄢˋ ㄅㄨˋ', pinyin: 'sànbù', def: [{ pos: 'V-sep', en: 'to take a walk', eg: [{zh:'我喜歡在公園散步。', en:'I like to take walks in the park.'}] }] },
+            { id: 227, unit: 12, word: '事', zhuyin: 'ㄕˋ', pinyin: 'shì', def: [{ pos: 'N', en: 'matter, affair, thing', eg: [{zh:'你有什麼事嗎？', en:'Is there anything I can help you with?'}, {zh:'這件事很重要。', en:'This matter is very important.'}] }] },
+            { id: 235, unit: 12, word: '說話', zhuyin: 'ㄕㄨㄛ ㄏㄨㄚˋ', pinyin: 'shuōhuà', def: [{ pos: 'V-sep', en: 'to speak, to talk', eg: [{zh:'請不要說話。', en:'Please do not talk.'}] }] },
+            { id: 244, unit: 12, word: '跳', zhuyin: 'ㄊㄧㄠˋ', pinyin: 'tiào', def: [{ pos: 'V', en: 'to jump', eg: [{zh:'他跳得很高。', en:'He jumps very high.'}] }] },
+            { id: 309, unit: 12, word: '意思', zhuyin: 'ㄧˋ ㄙ', pinyin: 'yìsi', def: [{ pos: 'N', en: 'meaning', eg: [{zh:'你懂我的意思嗎？', en:'Do you understand what I mean?'}] }] },
+            { id: 335, unit: 12, word: '音樂', zhuyin: 'ㄧㄣ ㄩㄝˋ', pinyin: 'yīnyuè', def: [{ pos: 'N', en: 'music', eg: [{zh:'我喜歡聽音樂。', en:'I like listening to music.'}] }] },
+            { id: 336, unit: 12, word: '游泳', zhuyin: 'ㄧㄡˊ ㄩㄥˇ', pinyin: 'yóuyǒng', def: [{ pos: 'V-sep', en: 'to swim', eg: [{zh:'我夏天喜歡去游泳。', en:'I like to go swimming in the summer.'}] }] },
+            { id: 347, unit: 12, word: '再見', zhuyin: 'ㄗㄞˋ ㄐㄧㄢˋ', pinyin: 'zàijiàn', def: [{ pos: 'I', en: 'goodbye', eg: [{zh:'老師，再見！', en:'Goodbye, teacher!'}] }] },
+            { id: 350, unit: 12, word: '照相', zhuyin: 'ㄓㄠˋ ㄒㄧㄤˋ', pinyin: 'zhàoxiàng', def: [{ pos: 'V-sep', en: 'to take a photo', eg: [{zh:'這裡的風景很美，我們來照相吧！', en:"The scenery here is beautiful, let's take a picture!"}] }] },
+            { id: 382, unit: 12, word: '知道', zhuyin: 'ㄓ ㄉㄠˋ', pinyin: 'zhīdào', def: [{ pos: 'V', en: 'to know', eg: [{zh:'我知道這件事。', en:'I know about this matter.'}] }] },
+            { id: 10, unit: 13, word: '棒', zhuyin: 'ㄅㄤˋ', pinyin: 'bàng', def: [{ pos: 'Vs', en: 'great, wonderful', eg: [{zh:'你真棒！', en:"You're great!"}] }] },
+            { id: 38, unit: 13, word: '大', zhuyin: 'ㄉㄚˋ', pinyin: 'dà', def: [{ pos: 'Vs', en: 'big, large', eg: [{zh:'這個蘋果很大。', en:'This apple is very big.'}] }] },
+            { id: 65, unit: 13, word: '多', zhuyin: 'ㄉㄨㄛ', pinyin: 'duō', def: [{ pos: 'Vs', en: 'many, much', eg: [{zh:'這裡人很多。', en:'There are many people here.'}] }] },
+            { id: 81, unit: 13, word: '高', zhuyin: 'ㄍㄠ', pinyin: 'gāo', def: [{ pos: 'Vs', en: 'tall, high', eg: [{zh:'他很高。', en:'He is very tall.'}] }] },
+            { id: 84, unit: 13, word: '高興', zhuyin: 'ㄍㄠ ㄒㄧㄥˋ', pinyin: 'gāoxìng', def: [{ pos: 'Vs', en: 'happy, glad', eg: [{zh:'今天我很不高興。', en:"I'm not very happy today."}] }] },
+            { id: 93, unit: 13, word: '貴', zhuyin: 'ㄍㄨㄟˋ', pinyin: 'guì', def: [{ pos: 'Vs', en: 'expensive', eg: [{zh:'這件衣服太貴了。', en:'This piece of clothing is too expensive.'}] }] },
+            { id: 96, unit: 13, word: '好', zhuyin: 'ㄏㄠˇ', pinyin: 'hǎo', def: [{ pos: 'Vs', en: 'good, well', eg: [{zh:'你很好。', en:'You are very good.'}, {zh:'他說得很好。', en:'He speaks very well.'}] }] },
+            { id: 95, unit: 13, word: '好看', zhuyin: 'ㄏㄠˇ ㄎㄢˋ', pinyin: 'hǎokàn', def: [{ pos: 'Vs', en: 'good-looking, interesting (of a book/movie)', eg: [{zh:'這件衣服很好看。', en:'This piece of clothing looks good.'}, {zh:'這部電影很好看。', en:'This movie is very good.'}] }] },
+            { id: 136, unit: 13, word: '近', zhuyin: 'ㄐㄧㄣˋ', pinyin: 'jìn', def: [{ pos: 'Vs', en: 'near, close', eg: [{zh:'我家離學校很近。', en:'My home is very close to the school.'}] }] },
+            { id: 149, unit: 13, word: '渴', zhuyin: 'ㄎㄜˇ', pinyin: 'kě', def: [{ pos: 'Vs', en: 'thirsty', eg: [{zh:'我很渴，想喝水。', en:"I'm thirsty and want to drink water."}] }] },
+            { id: 158, unit: 13, word: '累', zhuyin: 'ㄌㄟˋ', pinyin: 'lèi', def: [{ pos: 'Vs', en: 'tired', eg: [{zh:'我好累。', en:"I'm so tired."}] }] },
+            { id: 178, unit: 13, word: '忙', zhuyin: 'ㄇㄤˊ', pinyin: 'máng', def: [{ pos: 'Vs', en: 'busy', eg: [{zh:'你最近忙嗎？', en:'Have you been busy recently?'}] }] },
+            { id: 191, unit: 13, word: '難', zhuyin: 'ㄋㄢˊ', pinyin: 'nán', def: [{ pos: 'Vs', en: 'difficult', eg: [{zh:'中文很難。', en:'Chinese is very difficult.'}] }] },
+            { id: 207, unit: 13, word: '便宜', zhuyin: 'ㄆㄧㄢˊ ㄧˊ', pinyin: 'piányí', def: [{ pos: 'Vs', en: 'cheap, inexpensive', eg: [{zh:'這家店的東西很便宜。', en:'The things in this store are very cheap.'}] }] },
+            { id: 222, unit: 13, word: '少', zhuyin: 'ㄕㄠˇ', pinyin: 'shǎo', def: [{ pos: 'Vs', en: 'few, little', eg: [{zh:'今天人很少。', en:'There are few people today.'}] }] },
+            { id: 234, unit: 13, word: '舒服', zhuyin: 'ㄕㄨ ㄈㄨˊ', pinyin: 'shūfú', def: [{ pos: 'Vs', en: 'comfortable', eg: [{zh:'這張椅子很舒服。', en:'This chair is very comfortable.'}] }] },
+            { id: 296, unit: 13, word: '小', zhuyin: 'ㄒㄧㄠˇ', pinyin: 'xiǎo', def: [{ pos: 'Vs', en: 'small, little', eg: [{zh:'這件衣服太小了。', en:'This piece of clothing is too small.'}] }] },
+            { id: 322, unit: 13, word: '新', zhuyin: 'ㄒㄧㄣ', pinyin: 'xīn', def: [{ pos: 'Vs', en: 'new', eg: [{zh:'我買了一件新衣服。', en:'I bought a new piece of clothing.'}] }] },
+            { id: 330, unit: 13, word: '一樣', zhuyin: 'ㄧˊ ㄧㄤˋ', pinyin: 'yíyàng', def: [{ pos: 'Vs', en: 'same, alike', eg: [{zh:'這兩件衣服一樣。', en:'These two pieces of clothing are the same.'}] }] },
+            { id: 348, unit: 13, word: '遠', zhuyin: 'ㄩㄢˇ', pinyin: 'yuǎn', def: [{ pos: 'Vs', en: 'far, distant', eg: [{zh:'我家離學校很遠。', en:'My home is far from the school.'}] }] },
+            { id: 57, unit: 14, word: '電腦', zhuyin: 'ㄉㄧㄢˋ ㄋㄠˇ', pinyin: 'diànnǎo', def: [{ pos: 'N', en: 'computer', eg: [{zh:'我用電腦工作。', en:'I work with a computer.'}] }] },
+            { id: 58, unit: 14, word: '電話', zhuyin: 'ㄉㄧㄢˋ ㄏㄨㄚˋ', pinyin: 'diànhuà', def: [{ pos: 'N', en: 'telephone', eg: [{zh:'你的電話號碼是幾號？', en:'What is your phone number?'}] }] },
+            { id: 61, unit: 14, word: '狗', zhuyin: 'ㄍㄡˇ', pinyin: 'gǒu', def: [{ pos: 'N', en: 'dog', eg: [{zh:'我有一隻狗。', en:'I have a dog.'}] }] },
+            { id: 123, unit: 14, word: '腳', zhuyin: 'ㄐㄧㄠˇ', pinyin: 'jiǎo', def: [{ pos: 'N', en: 'foot', eg: [{zh:'我的腳很痛。', en:'My foot hurts.'}] }] },
+            { id: 135, unit: 14, word: '名字', zhuyin: 'ㄇㄧㄥˊ ˙ㄗ', pinyin: 'míngzi', def: [{ pos: 'N', en: 'name', eg: [{zh:'你叫什麼名字？', en:'What is your name?'}] }] },
+            { id: 190, unit: 14, word: '男', zhuyin: 'ㄋㄢˊ', pinyin: 'nán', def: [{ pos: 'N', en: 'male', eg: [{zh:'他是男的。', en:'He is male.'}] }] },
+            { id: 196, unit: 14, word: '年紀', zhuyin: 'ㄋㄧㄢˊ ㄐㄧˋ', pinyin: 'niánjì', def: [{ pos: 'N', en: 'age', eg: [{zh:'你問女生的年紀是不禮貌的。', en:"It's impolite to ask a woman her age."}] }] },
+            { id: 197, unit: 14, word: '鳥', zhuyin: 'ㄋㄧㄠˇ', pinyin: 'niǎo', def: [{ pos: 'N', en: 'bird', eg: [{zh:'樹上有很多鳥。', en:'There are many birds in the tree.'}] }] },
+            { id: 257, unit: 14, word: '女', zhuyin: 'ㄋㄩˇ', pinyin: 'nǚ', def: [{ pos: 'N', en: 'female', eg: [{zh:'他是女的。', en:'She is female.'}] }] },
+            { id: 262, unit: 14, word: '氣', zhuyin: 'ㄑㄧˋ', pinyin: 'qì', def: [{ pos: 'N', en: 'air, gas', eg: [{zh:'這裡的空氣很好。', en:'The air here is very good.'}] }] },
+            { id: 270, unit: 14, word: '手', zhuyin: 'ㄕㄡˇ', pinyin: 'shǒu', def: [{ pos: 'N', en: 'hand', eg: [{zh:'請洗手。', en:'Please wash your hands.'}] }] },
+            { id: 271, unit: 14, word: '手機', zhuyin: 'ㄕㄡˇ ㄐㄧ', pinyin: 'shǒujī', def: [{ pos: 'N', en: 'cellphone', eg: [{zh:'我的手機沒電了。', en:'My cellphone is out of battery.'}] }] },
+            { id: 321, unit: 14, word: '心', zhuyin: 'ㄒㄧㄣ', pinyin: 'xīn', def: [{ pos: 'N', en: 'heart', eg: [{zh:'請你用心聽。', en:'Please listen with your heart (attentively).'}] }] },
+            { id: 324, unit: 14, word: '姓', zhuyin: 'ㄒㄧㄥˋ', pinyin: 'xìng', def: [{ pos: 'N', en: 'surname', eg: [{zh:'我的姓是王。', en:'My surname is Wang.'}] }] },
+            { id: 325, unit: 14, word: '休息', zhuyin: 'ㄒㄧㄡ ㄒㄧˊ', pinyin: 'xiūxí', def: [{ pos: 'V-sep', en: 'to rest', eg: [{zh:'我累了，想休息一下。', en:"I'm tired, I want to rest for a bit."}] }] },
+            { id: 331, unit: 14, word: '眼睛', zhuyin: 'ㄧㄢˇ ㄐㄧㄥ', pinyin: 'yǎnjīng', def: [{ pos: 'N', en: 'eye', eg: [{zh:'他的眼睛很大。', en:'His eyes are very big.'}] }] },
+            { id: 332, unit: 14, word: '顏色', zhuyin: 'ㄧㄢˊ ㄙㄜˋ', pinyin: 'yánsè', def: [{ pos: 'N', en: 'color', eg: [{zh:'你喜歡什麼顏色？', en:'What color do you like?'}] }] },
+            { id: 383, unit: 14, word: '紙', zhuyin: 'ㄓˇ', pinyin: 'zhǐ', def: [{ pos: 'N', en: 'paper', eg: [{zh:'請給我一張紙。', en:'Please give me a piece of paper.'}] }] },
+            { id: 388, unit: 14, word: '中文', zhuyin: 'ㄓㄨㄥ ㄨㄣˊ', pinyin: 'zhōngwén', def: [{ pos: 'N', en: 'Chinese language', eg: [{zh:'我正在學中文。', en:'I am learning Chinese.'}] }] },
+            { id: 13, unit: 14, word: '報紙', zhuyin: 'ㄅㄠˋ ㄓˇ', pinyin: 'bàozhǐ', def: [{ pos: 'N', en: 'newspaper', eg: [{zh:'我爸爸喜歡看報紙。', en:'My father likes to read the newspaper.'}] }] },
+            { id: 66, unit: 15, word: '嗎', zhuyin: 'ㄇㄚ˙', pinyin: 'ma', def: [{ pos: 'P', en: '(question particle)', eg: [{zh:'你好嗎？', en:'How are you?'}] }] },
+            { id: 121, unit: 15, word: '幾', zhuyin: 'ㄐㄧˇ', pinyin: 'jǐ', def: [{ pos: 'N', en: 'how many, a few', eg: [{zh:'你家有幾個人？', en:'How many people are in your family?'}, {zh:'我買了幾本書。', en:'I bought a few books.'}] }] },
+            { id: 192, unit: 15, word: '哪', zhuyin: 'ㄋㄚˇ', pinyin: 'nǎ', def: [{ pos: 'N', en: 'which', eg: [{zh:'你是哪國人？', en:'Which country are you from?'}] }] },
+            { id: 193, unit: 15, word: '那', zhuyin: 'ㄋㄚˋ', pinyin: 'nà', def: [{ pos: 'N', en: 'that', eg: [{zh:'那個人是誰？', en:'Who is that person?'}] }] },
+            { id: 213, unit: 15, word: '誰', zhuyin: 'ㄕㄟˊ', pinyin: 'shéi', def: [{ pos: 'N', en: 'who, whom', eg: [{zh:'他是誰？', en:'Who is he?'}] }] },
+            { id: 218, unit: 15, word: '什麼', zhuyin: 'ㄕㄣˊ ˙ㄇㄜ', pinyin: 'shénme', def: [{ pos: 'N', en: 'what', eg: [{zh:'你叫什麼名字？', en:'What is your name?'}] }] },
+            { id: 275, unit: 15, word: '喂', zhuyin: 'ㄨㄟˊ', pinyin: 'wéi', def: [{ pos: 'I', en: 'hello (on the phone)', eg: [{zh:'喂，你好。', en:'Hello (on the phone).'}] }] },
+            { id: 352, unit: 15, word: '怎麼樣', zhuyin: 'ㄗㄣˇ ˙ㄇㄜ ㄧㄤˋ', pinyin: 'zěnmeyàng', def: [{ pos: 'I', en: 'how is it?', eg: [{zh:'今天天氣怎麼樣？', en:'How is the weather today?'}] }] },
+            { id: 353, unit: 15, word: '這', zhuyin: 'ㄓㄜˋ', pinyin: 'zhè', def: [{ pos: 'N', en: 'this', eg: [{zh:'這是我的書。', en:'This is my book.'}] }] },
+            { id: 56, unit: 15, word: '多少', zhuyin: 'ㄉㄨㄛ ㄕㄠˇ', pinyin: 'duōshǎo', def: [{ pos: 'N', en: 'how much, how many', eg: [{zh:'這本書多少錢？', en:'How much does this book cost?'}] }] },
+            { id: 276, unit: 15, word: '為', zhuyin: 'ㄨㄟˋ', pinyin: 'wèi', def: [{ pos: 'P', en: 'for', eg: [{zh:'這是為你買的。', en:'This was bought for you.'}] }] },
+            { id: 277, unit: 15, word: '為什麼', zhuyin: 'ㄨㄟˋ ㄕㄣˊ ˙ㄇㄜ', pinyin: 'wèishénme', def: [{ pos: 'A', en: 'why', eg: [{zh:'你為什麼學中文？', en:'Why are you learning Chinese?'}] }] },
+            { id: 354, unit: 15, word: '這兒', zhuyin: 'ㄓㄜˋ ㄦ', pinyin: 'zhèr', def: [{ pos: 'N', en: 'here', eg: [{zh:'這裡的風景很美。', en:'The scenery here is beautiful.'}] }] },
+            { id: 355, unit: 15, word: '這裡', zhuyin: 'ㄓㄜˋ ㄌㄧˇ', pinyin: 'zhèlǐ', def: [{ pos: 'N', en: 'here', eg: [{zh:'我家在這裡。', en:'My home is here.'}] }] },
+            { id: 6, unit: 16, word: '幫忙', zhuyin: 'ㄅㄤ ㄇㄤˊ', pinyin: 'bāngmáng', def: [{ pos: 'V-sep', en: 'to help', eg: [{zh:'請你幫我一個忙。', en:'Please do me a favor.'}] }] },
+            { id: 22, unit: 16, word: '比賽', zhuyin: 'ㄅㄧˇ ㄙㄞˋ', pinyin: 'bǐsài', def: [{ pos: 'N', en: 'competition, match', eg: [{zh:'今天有棒球比賽。', en:'There is a baseball game today.'}] }, { pos: 'V', en: 'to compete', eg: [{zh:'我們來比賽跑步。', en:"Let's have a running race."}] }] },
+            { id: 32, unit: 16, word: '錯', zhuyin: 'ㄘㄨㄛˋ', pinyin: 'cuò', def: [{ pos: 'Vp', en: 'to be wrong', eg: [{zh:'對不起，我錯了。', en:"I'm sorry, I was wrong."}] }] },
+            { id: 48, unit: 16, word: '第', zhuyin: 'ㄉㄧˋ', pinyin: 'dì', def: [{ pos: 'P', en: '(prefix for ordinal numbers)', eg: [{zh:'他得第一名。', en:'He got first place.'}] }] },
+            { id: 52, unit: 16, word: '對', zhuyin: 'ㄉㄨㄟˋ', pinyin: 'duì', def: [{ pos: 'Vp', en: 'to be correct', eg: [{zh:'你說的對。', en:'What you said is correct.'}] }] },
+            { id: 77, unit: 16, word: '放', zhuyin: 'ㄈㄤˋ', pinyin: 'fàng', def: [{ pos: 'V', en: 'to put, to place', eg: [{zh:'請把書放在桌子上。', en:'Please put the book on the table.'}] }] },
+            { id: 79, unit: 16, word: '分', zhuyin: 'ㄈㄣ', pinyin: 'fēn', def: [{ pos: 'V', en: 'to divide, to separate', eg: [{zh:'我們分工合作。', en:"Let's divide the work and cooperate."}] }] },
+            { id: 87, unit: 16, word: '跟', zhuyin: 'ㄍㄣ', pinyin: 'gēn', def: [{ pos: 'P', en: 'with, and', eg: [{zh:'我跟你一起去。', en:'I will go with you.'}] }, { pos: 'V', en: 'to follow', eg: [{zh:'請跟我來。', en:'Please follow me.'}] }] },
+            { id: 102, unit: 16, word: '過', zhuyin: 'ㄍㄨㄛˋ', pinyin: 'guò', def: [{ pos: 'P', en: '(particle for past experience)', eg: [{zh:'我去過日本。', en:'I have been to Japan.'}] }, { pos: 'V', en: 'to pass', eg: [{zh:'他走過來了。', en:'He walked over.'}] }] },
+            { id: 114, unit: 16, word: '壞', zhuyin: 'ㄏㄨㄞˋ', pinyin: 'huài', def: [{ pos: 'Vp', en: 'to be bad, broken', eg: [{zh:'我的手機壞了。', en:'My cellphone is broken.'}] }] },
+            { id: 116, unit: 16, word: '歡迎', zhuyin: 'ㄏㄨㄢ ㄧㄥˊ', pinyin: 'huānyíng', def: [{ pos: 'V', en: 'to welcome', eg: [{zh:'歡迎你來台灣。', en:'Welcome to Taiwan.'}] }] },
+            { id: 127, unit: 16, word: '教', zhuyin: 'ㄐㄧㄠ', pinyin: 'jiāo', def: [{ pos: 'V', en: 'to teach', eg: [{zh:'老師教我們中文。', en:'The teacher teaches us Chinese.'}] }] },
+            { id: 146, unit: 16, word: '開始', zhuyin: 'ㄎㄞ ㄕˇ', pinyin: 'kāishǐ', def: [{ pos: 'V', en: 'to start, to begin', eg: [{zh:'我們現在開始上課。', en:"Let's start class now."}] }] },
+            { id: 152, unit: 16, word: '可以', zhuyin: 'ㄎㄜˇ ㄧˇ', pinyin: 'kěyǐ', def: [{ pos: 'Vaux', en: 'can, may', eg: [{zh:'我可以進來嗎？', en:'May I come in?'}] }] },
+            { id: 177, unit: 16, word: '快樂', zhuyin: 'ㄎㄨㄞˋ ㄌㄜˋ', pinyin: 'kuàilè', def: [{ pos: 'Vs', en: 'happy', eg: [{zh:'祝你生日快樂！', en:'Happy birthday to you!'}] }] },
+            { id: 259, unit: 16, word: '起床', zhuyin: 'ㄑㄧˇ ㄔㄨㄤˊ', pinyin: 'qǐchuáng', def: [{ pos: 'V-sep', en: 'to get up', eg: [{zh:'我每天七點起床。', en:'I get up at seven every day.'}] }] },
+            { id: 260, unit: 16, word: '讓', zhuyin: 'ㄖㄤˋ', pinyin: 'ràng', def: [{ pos: 'V', en: 'to let, to allow', eg: [{zh:'請讓我來幫你。', en:'Please let me help you.'}] }] },
+            { id: 308, unit: 16, word: '用', zhuyin: 'ㄩㄥˋ', pinyin: 'yòng', def: [{ pos: 'V', en: 'to use', eg: [{zh:'我用電腦工作。', en:'I use a computer for work.'}] }] },
+            { id: 310, unit: 16, word: '以為', zhuyin: 'ㄧˇ ㄨㄟˊ', pinyin: 'yǐwéi', def: [{ pos: 'V', en: 'to think, to assume (wrongly)', eg: [{zh:'我以為今天是星期天。', en:'I thought today was Sunday.'}] }] },
+            { id: 398, unit: 16, word: '準備', zhuyin: 'ㄓㄨㄣˇ ㄅㄟˋ', pinyin: 'zhǔnbèi', def: [{ pos: 'V', en: 'to prepare', eg: [{zh:'我正在準備晚餐。', en:'I am preparing dinner.'}] }] },
+            { id: 23, unit: 17, word: '病', zhuyin: 'ㄅㄧㄥˋ', pinyin: 'bìng', def: [{ pos: 'Vp', en: 'to be sick', eg: [{zh:'我病了。', en:"I'm sick."}] }, { pos: 'N', en: 'illness', eg: [{zh:'他的病好了。', en:'His illness is cured.'}] }] },
+            { id: 69, unit: 17, word: '發燒', zhuyin: 'ㄈㄚ ㄕㄠ', pinyin: 'fāshāo', def: [{ pos: 'V-sep', en: 'to have a fever', eg: [{zh:'我發燒了。', en:'I have a fever.'}] }] },
+            { id: 80, unit: 17, word: '感冒', zhuyin: 'ㄍㄢˇ ㄇㄠˋ', pinyin: 'gǎnmào', def: [{ pos: 'Vp', en: 'to have a cold', eg: [{zh:'我感冒了。', en:'I have a cold.'}] }] },
+            { id: 118, unit: 17, word: '藥', zhuyin: 'ㄧㄠˋ', pinyin: 'yào', def: [{ pos: 'N', en: 'medicine', eg: [{zh:'你吃藥了嗎？', en:'Have you taken your medicine?'}] }] },
+            { id: 128, unit: 17, word: '覺得', zhuyin: 'ㄐㄩㄝˊ ˙ㄉㄜ', pinyin: 'juéde', def: [{ pos: 'V', en: 'to feel, to think', eg: [{zh:'我覺得很冷。', en:'I feel very cold.'}, {zh:'我覺得這本書很好看。', en:'I think this book is very good.'}] }] },
+            { id: 143, unit: 17, word: '藥局', zhuyin: 'ㄧㄠˋ ㄐㄩˊ', pinyin: 'yàojú', def: [{ pos: 'N', en: 'pharmacy', eg: [{zh:'我去藥局買藥。', en:'I go to the pharmacy to buy medicine.'}] }] },
+            { id: 217, unit: 17, word: '生', zhuyin: 'ㄕㄥ', pinyin: 'shēng', def: [{ pos: 'V', en: 'to be born', eg: [{zh:'我是在台灣生的。', en:'I was born in Taiwan.'}] }] },
+            { id: 218, unit: 17, word: '生病', zhuyin: 'ㄕㄥ ㄅㄧㄥˋ', pinyin: 'shēngbìng', def: [{ pos: 'V-sep', en: 'to get sick', eg: [{zh:'我生病了。', en:"I'm sick."}] }] },
+            { id: 223, unit: 17, word: '身體', zhuyin: 'ㄕㄣ ㄊㄧˇ', pinyin: 'shēntǐ', def: [{ pos: 'N', en: 'body, health', eg: [{zh:'多運動對身體好。', en:'Exercising more is good for your health.'}] }] },
+            { id: 240, unit: 17, word: '痛', zhuyin: 'ㄊㄨㄥˋ', pinyin: 'tòng', def: [{ pos: 'Vs', en: 'to hurt, painful', eg: [{zh:'我的頭很痛。', en:'My head hurts.'}] }] },
+            { id: 241, unit: 17, word: '頭', zhuyin: 'ㄊㄡˊ', pinyin: 'tóu', def: [{ pos: 'N', en: 'head', eg: [{zh:'我的頭很痛。', en:'My head hurts.'}] }] },
+            { id: 302, unit: 17, word: '藥房', zhuyin: 'ㄧㄠˋ ㄈㄤˊ', pinyin: 'yàofáng', def: [{ pos: 'N', en: 'pharmacy', eg: [{zh:'我去藥房買藥。', en:'I go to the pharmacy to buy medicine.'}] }] },
+            { id: 303, unit: 17, word: '要', zhuyin: 'ㄧㄠˋ', pinyin: 'yào', def: [{ pos: 'Vaux', en: 'to want, will, to need', eg: [{zh:'我要喝水。', en:'I want to drink water.'}, {zh:'明天會下雨，要帶傘。', en:"It will rain tomorrow, you need to bring an umbrella."}] }] },
+            { id: 306, unit: 17, word: '醫生', zhuyin: 'ㄧ ㄕㄥ', pinyin: 'yīshēng', def: [{ pos: 'N', en: 'doctor', eg: [{zh:'我去看醫生。', en:'I went to see a doctor.'}] }] },
+            { id: 307, unit: 17, word: '醫院', zhuyin: 'ㄧ ㄩㄢˋ', pinyin: 'yīyuàn', def: [{ pos: 'N', en: 'hospital', eg: [{zh:'我在醫院工作。', en:'I work at a hospital.'}] }] },
+            { id: 323, unit: 17, word: '休息', zhuyin: 'ㄒㄧㄡ ㄒㄧˊ', pinyin: 'xiūxí', def: [{ pos: 'V-sep', en: 'to rest', eg: [{zh:'我累了，想休息一下。', en:"I'm tired, I want to rest for a bit."}] }] },
+            { id: 333, unit: 17, word: '眼睛', zhuyin: 'ㄧㄢˇ ㄐㄧㄥ', pinyin: 'yǎnjīng', def: [{ pos: 'N', en: 'eye', eg: [{zh:'他的眼睛很大。', en:'His eyes are very big.'}] }] },
+            { id: 261, unit: 17, word: '日', zhuyin: 'ㄖˋ', pinyin: 'rì', def: [{ pos: 'N', en: 'day, sun', eg: [{zh:'今天是十月十日。', en:'Today is October 10th.'}] }] },
+            { id: 264, unit: 17, word: '生日', zhuyin: 'ㄕㄥ ㄖˋ', pinyin: 'shēngrì', def: [{ pos: 'N', en: 'birthday', eg: [{zh:'祝你生日快樂！', en:'Happy birthday to you!'}] }] },
+            { id: 269, unit: 17, word: '手', zhuyin: 'ㄕㄡˇ', pinyin: 'shǒu', def: [{ pos: 'N', en: 'hand', eg: [{zh:'請洗手。', en:'Please wash your hands.'}] }] },
+            { id: 12, unit: 18, word: '不', zhuyin: 'ㄅㄨˋ', pinyin: 'bù', def: [{ pos: 'A', en: 'not, no', eg: [{zh:'我不是學生。', en:"I am not a student."}, {zh:'我不喜歡喝茶。', en:"I don't like to drink tea."}] }] },
+            { id: 26, unit: 18, word: '才', zhuyin: 'ㄘㄞˊ', pinyin: 'cái', def: [{ pos: 'A', en: 'only then, not until', eg: [{zh:'我九點才起床。', en:"I didn't get up until nine o'clock."}] }] },
+            { id: 27, unit: 18, word: '常', zhuyin: 'ㄔㄤˊ', pinyin: 'cháng', def: [{ pos: 'A', en: 'often', eg: [{zh:'我常去圖書館看書。', en:'I often go to the library to read.'}] }] },
+            { id: 37, unit: 18, word: '都', zhuyin: 'ㄉㄡ', pinyin: 'dōu', def: [{ pos: 'A', en: 'all, both', eg: [{zh:'我們都是學生。', en:'We are all students.'}, {zh:'這些書我都看過。', en:'I have read all these books.'}] }] },
+            { id: 92, unit: 18, word: '還', zhuyin: 'ㄏㄞˊ', pinyin: 'hái', def: [{ pos: 'A', en: 'still, also', eg: [{zh:'他還沒來。', en:"He still hasn't come yet."}, {zh:'我喜歡喝茶，還喜歡喝咖啡。', en:'I like tea, and I also like coffee.'}] }] },
+            { id: 101, unit: 18, word: '很', zhuyin: 'ㄏㄣˇ', pinyin: 'hěn', def: [{ pos: 'A', en: 'very', eg: [{zh:'今天很熱。', en:'It is very hot today.'}] }] },
+            { id: 134, unit: 18, word: '就', zhuyin: 'ㄐㄧㄡˋ', pinyin: 'jiù', def: [{ pos: 'A', en: 'then, exactly', eg: [{zh:'我吃了飯就去。', en:"I'll go right after I eat."}, {zh:'我家就在學校旁邊。', en:'My house is right next to the school.'}] }] },
+            { id: 160, unit: 18, word: '了', zhuyin: '˙ㄌㄜ', pinyin: 'le', def: [{ pos: 'P', en: '(particle for completed action)', eg: [{zh:'我吃飯了。', en:'I have eaten.'}] }] },
+            { id: 179, unit: 18, word: '沒', zhuyin: 'ㄇㄟˊ', pinyin: 'méi', def: [{ pos: 'A', en: 'not (for past actions)', eg: [{zh:'我沒吃飯。', en:"I didn't eat."}] }] },
+            { id: 181, unit: 18, word: '沒有', zhuyin: 'ㄇㄟˊ ㄧㄡˇ', pinyin: 'méiyǒu', def: [{ pos: 'V', en: 'to not have', eg: [{zh:'我沒有錢。', en:"I don't have money."}] }, { pos: 'A', en: 'not (for past actions)', eg: [{zh:'我沒有吃飯。', en:"I didn't eat."}] }] },
+            { id: 214, unit: 18, word: '太', zhuyin: 'ㄊㄞˋ', pinyin: 'tài', def: [{ pos: 'A', en: 'too, excessively', eg: [{zh:'這件衣服太貴了。', en:'This piece of clothing is too expensive.'}] }] },
+            { id: 225, unit: 18, word: '也', zhuyin: 'ㄧㄝˇ', pinyin: 'yě', def: [{ pos: 'A', en: 'also, too', eg: [{zh:'我也是學生。', en:'I am also a student.'}] }] },
+            { id: 312, unit: 18, word: '先', zhuyin: 'ㄒㄧㄢ', pinyin: 'xiān', def: [{ pos: 'A', en: 'first', eg: [{zh:'你先走吧。', en:'You go first.'}] }] },
+            { id: 316, unit: 18, word: '想', zhuyin: 'ㄒㄧㄤˇ', pinyin: 'xiǎng', def: [{ pos: 'Vaux', en: 'to want to, to think', eg: [{zh:'我想喝水。', en:'I want to drink water.'}, {zh:'我想家了。', en:'I miss home.'}] }] },
+            { id: 356, unit: 18, word: '真', zhuyin: 'ㄓㄣ', pinyin: 'zhēn', def: [{ pos: 'A', en: 'really, truly', eg: [{zh:'今天真熱。', en:'It is really hot today.'}] }] },
+            { id: 357, unit: 18, word: '正在', zhuyin: 'ㄓㄥˋ ㄗㄞˋ', pinyin: 'zhèngzài', def: [{ pos: 'A', en: 'in the process of', eg: [{zh:'我正在看書。', en:'I am reading a book.'}] }] },
+            { id: 384, unit: 18, word: '只', zhuyin: 'ㄓˇ', pinyin: 'zhǐ', def: [{ pos: 'A', en: 'only', eg: [{zh:'我只有一個妹妹。', en:'I only have one younger sister.'}] }] },
+            { id: 392, unit: 18, word: '最', zhuyin: 'ㄗㄨㄟˋ', pinyin: 'zuì', def: [{ pos: 'A', en: 'most', eg: [{zh:'我最喜歡的水果是西瓜。', en:'My favorite fruit is watermelon.'}] }] },
+            { id: 86, unit: 18, word: '更', zhuyin: 'ㄍㄥˋ', pinyin: 'gèng', def: [{ pos: 'A', en: 'even more', eg: [{zh:'今天比昨天更熱。', en:'Today is even hotter than yesterday.'}] }] },
+            { id: 115, unit: 18, word: '還', zhuyin: 'ㄏㄨㄢˊ', pinyin: 'huán', def: [{ pos: 'V', en: 'to return', eg: [{zh:'我要還你錢。', en:'I need to return your money.'}] }] },
+            { id: 14, unit: 19, word: '吧', zhuyin: '˙ㄅㄚ', pinyin: 'ba', def: [{ pos: 'P', en: '(particle for suggestion)', eg: [{zh:'我們去看電影吧！', en:"Let's go watch a movie!"}] }] },
+            { id: 42, unit: 19, word: '但是', zhuyin: 'ㄉㄢˋ ㄕˋ', pinyin: 'dànshì', def: [{ pos: 'C', en: 'but, however', eg: [{zh:'我想去，但是沒時間。', en:"I want to go, but I don't have time."}] }] },
+            { id: 44, unit: 19, word: '地', zhuyin: '˙ㄉㄜ', pinyin: 'de', def: [{ pos: 'P', en: '(particle for adverbs)', eg: [{zh:'他高興地笑了。', en:'He laughed happily.'}] }] },
+            { id: 103, unit: 19, word: '還是', zhuyin: 'ㄏㄞˊ ㄕˋ', pinyin: 'háishì', def: [{ pos: 'C', en: 'or (in questions)', eg: [{zh:'你喜歡喝茶還是咖啡？', en:'Do you like tea or coffee?'}] }] },
+            { id: 117, unit: 19, word: '和', zhuyin: 'ㄏㄢˋ', pinyin: 'hàn', def: [{ pos: 'C', en: 'and', eg: [{zh:'我喜歡茶和咖啡。', en:'I like tea and coffee.'}] }] },
+            { id: 138, unit: 19, word: '還有', zhuyin: 'ㄏㄞˊ ㄧㄡˇ', pinyin: 'háiyǒu', def: [{ pos: 'C', en: 'also, in addition', eg: [{zh:'我喜歡蘋果，還有西瓜。', en:'I like apples, and also watermelon.'}] }] },
+            { id: 140, unit: 19, word: '就', zhuyin: 'ㄐㄧㄡˋ', pinyin: 'jiù', def: [{ pos: 'C', en: 'then', eg: [{zh:'我吃了飯就去。', en:"I'll go right after I eat."}] }] },
+            { id: 155, unit: 19, word: '可是', zhuyin: 'ㄎㄜˇ ㄕˋ', pinyin: 'kěshì', def: [{ pos: 'C', en: 'but, however', eg: [{zh:'我想去，可是沒時間。', en:"I want to go, but I don't have time."}] }] },
+            { id: 265, unit: 19, word: '所以', zhuyin: 'ㄙㄨㄛˇ ㄧˇ', pinyin: 'suǒyǐ', def: [{ pos: 'C', en: 'so, therefore', eg: [{zh:'因為下雨，所以我沒去。', en:"Because it was raining, so I didn't go."}] }] },
+            { id: 305, unit: 19, word: '因為', zhuyin: 'ㄧㄣ ㄨㄟˋ', pinyin: 'yīnwèi', def: [{ pos: 'C', en: 'because', eg: [{zh:'因為下雨，所以我沒去。', en:"Because it was raining, so I didn't go."}] }] },
+            { id: 311, unit: 19, word: '要是', zhuyin: 'ㄧㄠˋ ㄕˋ', pinyin: 'yàoshì', def: [{ pos: 'C', en: 'if', eg: [{zh:'要是下雨，我們就不去了。', en:"If it rains, we won't go."}] }] },
+            { id: 24, unit: 19, word: '從', zhuyin: 'ㄘㄨㄥˊ', pinyin: 'cóng', def: [{ pos: 'P', en: 'from', eg: [{zh:'我從美國來。', en:'I come from the USA.'}] }] },
+            { id: 54, unit: 19, word: '對', zhuyin: 'ㄉㄨㄟˋ', pinyin: 'duì', def: [{ pos: 'P', en: 'to, for', eg: [{zh:'他對我很好。', en:'He is very good to me.'}] }] },
+            { id: 162, unit: 19, word: '離', zhuyin: 'ㄌㄧˊ', pinyin: 'lí', def: [{ pos: 'P', en: 'away from', eg: [{zh:'我家離學校很近。', en:'My house is close to the school.'}] }] },
+            { id: 266, unit: 19, word: '往', zhuyin: 'ㄨㄤˇ', pinyin: 'wǎng', def: [{ pos: 'P', en: 'towards', eg: [{zh:'請往前走。', en:'Please walk forward.'}] }] },
+            { id: 8, unit: 20, word: '班', zhuyin: 'ㄅㄢ', pinyin: 'bān', def: [{ pos: 'N', en: 'class', eg: [{zh:'我們班有二十個學生。', en:'There are twenty students in our class.'}] }] },
+            { id: 9, unit: 20, word: '半天', zhuyin: 'ㄅㄢˋ ㄊㄧㄢ', pinyin: 'bàntiān', def: [{ pos: 'N', en: 'half a day, a long time', eg: [{zh:'我等了你半天。', en:'I waited for you for a long time.'}] }] },
+            { id: 11, unit: 20, word: '幫', zhuyin: 'ㄅㄤ', pinyin: 'bāng', def: [{ pos: 'V', en: 'to help', eg: [{zh:'請你幫我一個忙。', en:'Please do me a favor.'}] }] },
+            { id: 16, unit: 20, word: '別', zhuyin: 'ㄅㄧㄝˊ', pinyin: 'bié', def: [{ pos: 'A', en: "don't", eg: [{zh:'別說話。', en:"Don't talk."}] }] },
+            { id: 76, unit: 20, word: '放假', zhuyin: 'ㄈㄤˋ ㄐㄧㄚˋ', pinyin: 'fàngjià', def: [{ pos: 'V-sep', en: 'to have a holiday or vacation', eg: [{zh:'我們明天放假。', en:"We have a day off tomorrow."}] }] },
+            { id: 78, unit: 20, word: '放心', zhuyin: 'ㄈㄤˋ ㄒㄧㄣ', pinyin: 'fàngxīn', def: [{ pos: 'V-sep', en: 'to rest assured', eg: [{zh:'你放心，我會照顧好自己。', en:"Don't worry, I will take care of myself."}] }] },
+            { id: 94, unit: 20, word: '國', zhuyin: 'ㄍㄨㄛˊ', pinyin: 'guó', def: [{ pos: 'N', en: 'country', eg: [{zh:'你是哪國人？', en:'Which country are you from?'}] }] },
+            { id: 139, unit: 20, word: '號碼', zhuyin: 'ㄏㄠˋ ㄇㄚˇ', pinyin: 'hàomǎ', def: [{ pos: 'N', en: 'number', eg: [{zh:'你的電話號碼是幾號？', en:'What is your phone number?'}] }] },
+            { id: 177, unit: 20, word: '貓', zhuyin: 'ㄇㄠ', pinyin: 'māo', def: [{ pos: 'N', en: 'cat', eg: [{zh:'我喜歡貓。', en:'I like cats.'}] }] },
+            { id: 215, unit: 20, word: '台', zhuyin: 'ㄊㄞˊ', pinyin: 'tái', def: [{ pos: 'M', en: '(measure for machines)', eg: [{zh:'我買了一台新電腦。', en:'I bought a new computer.'}] }] },
+            { id: 231, unit: 20, word: '試', zhuyin: 'ㄕˋ', pinyin: 'shì', def: [{ pos: 'V', en: 'to try', eg: [{zh:'我可以試穿這件衣服嗎？', en:'Can I try on this piece of clothing?'}] }] },
+            { id: 251, unit: 20, word: '問題', zhuyin: 'ㄨㄣˋ ㄊㄧˊ', pinyin: 'wèntí', def: [{ pos: 'N', en: 'question, problem', eg: [{zh:'你有什麼問題嗎？', en:'Do you have any questions?'}] }] },
+            { id: 252, unit: 20, word: '文化', zhuyin: 'ㄨㄣˊ ㄏㄨㄚˋ', pinyin: 'wénhuà', def: [{ pos: 'N', en: 'culture', eg: [{zh:'我對中國文化很感興趣。', en:'I am very interested in Chinese culture.'}] }] },
+            { id: 253, unit: 20, word: '信', zhuyin: 'ㄒㄧㄣˋ', pinyin: 'xìn', def: [{ pos: 'V', en: 'to believe', eg: [{zh:'我相信你。', en:'I believe you.'}] }] },
+            { id: 255, unit: 20, word: '星期', zhuyin: 'ㄒㄧㄥ ㄑㄧˊ', pinyin: 'xīngqí', def: [{ pos: 'N', en: 'week', eg: [{zh:'一個星期有七天。', en:'There are seven days in a week.'}] }] },
+            { id: 256, unit: 20, word: '行', zhuyin: 'ㄒㄧㄥˊ', pinyin: 'xíng', def: [{ pos: 'Vp', en: 'to be all right, OK', eg: [{zh:'這樣行嗎？', en:'Is this okay?'}] }] },
+            { id: 380, unit: 20, word: '支', zhuyin: 'ㄓ', pinyin: 'zhī', def: [{ pos: 'M', en: '(for pens, etc.)', eg: [{zh:'我買了三支筆。', en:'I bought three pens.'}] }] },
+            { id: 366, unit: 20, word: '請', zhuyin: 'ㄑㄧㄥˇ', pinyin: 'qǐng', def: [{ pos: 'V', en: 'please, to invite', eg: [{zh:'請坐。', en:'Please sit.'}, {zh:'我請你吃飯。', en:'I invite you to a meal.'}] }] },
+            { id: 367, unit: 20, word: '請問', zhuyin: 'ㄑㄧㄥˇ ㄨㄣˋ', pinyin: 'qǐngwèn', def: [{ pos: 'I', en: 'excuse me, may I ask', eg: [{zh:'請問，火車站在哪裡？', en:'Excuse me, where is the train station?'}] }] },
+        ];
+        
+        data.units = [
+            { id: 1, name: '問候與人 / Greetings & People'}, { id: 2, name: '家庭與居家 / Family & Home'},
+            { id: 3, name: '數字與量詞 / Numbers & M.W.'}, { id: 4, name: '時間 / Time Expressions'},
+            { id: 5, name: '食物與飲料 / Food & Drink'}, { id: 6, name: '動作詞(1) / Verbs 1'},
+            { id: 7, name: '地點與方位 / Places & Directions'}, { id: 8, name: '交通 / Transportation'},
+            { id: 9, name: '衣物 / Clothing'}, { id: 10, name: '天氣與自然 / Weather & Nature'},
+            { id: 11, name: '學習與學校 / Learning & School'}, { id: 12, name: '興趣與活動 / Hobbies & Activities'},
+            { id: 13, name: '描述(形) / Adjectives'}, { id: 14, name: '常見物品 / Common Objects'},
+            { id: 15, name: '疑問詞 / Question Words'}, { id: 16, name: '動作詞(2) / Verbs 2'},
+            { id: 17, name: '身體與健康 / Body & Health'}, { id: 18, name: '描述(副) / Adverbs'},
+            { id: 19, name: '連詞與介詞 / Conjunctions & Prepositions'}, { id: 20, name: '綜合 / Miscellaneous'},
+        ];
+    }
+
+    // Main application logic starts here
+    const state = {
+        unitSelectionView: document.getElementById('unit-selection-view'),
+        flashcardView: document.getElementById('flashcard-view'),
+        quizView: document.getElementById('quiz-view'),
+        typingView: document.getElementById('typing-view'),
+        dictationView: document.getElementById('dictation-view'),
+        quizResultsView: document.getElementById('quiz-results-view'),
+        reportView: document.getElementById('report-view'),
+    };
+
+    const PROGRESS_KEY = 'chineseFlashcards_Official_L1_v14_progress';
+    const QUIZ_SCORES_KEY = 'chineseFlashcards_Official_L1_v14_scores';
+    const QUIZ_LENGTH = 10;
+    const TYPING_LENGTH = 10;
+    const TYPING_WORD_COUNT = 4;
+    const DICTATION_LENGTH = 10;
+
+    let currentQuiz = { unitId: null, questions: [], currentQuestionIndex: 0, score: 0, userAnswers: [] };
+    let currentTyping = { unitId: null, items: [], currentItemIndex: 0 };
+    let currentDictation = { unitId: null, items: [], currentItemIndex: 0 };
+
+    function init() {
+        completeWordData(appData);
+        loadProgress();
+        loadQuizScores();
+        setupUnitSelection();
+        showView('unitSelection');
+        
+        document.getElementById('flip-card').addEventListener('click', () => document.getElementById('card').classList.toggle('is-flipped'));
+        document.getElementById('next-card').addEventListener('click', () => navigateCard(1));
+        document.getElementById('prev-card').addEventListener('click', () => navigateCard(-1));
+        document.getElementById('back-to-units-flashcard').addEventListener('click', () => { showView('unitSelection'); setupUnitSelection(); });
+        document.getElementById('mark-mastered').addEventListener('click', () => markCurrentWord('mastered'));
+        document.getElementById('mark-reviewing').addEventListener('click', () => markCurrentWord('reviewing'));
+        
+        document.getElementById('back-to-units-quiz').addEventListener('click', () => showView('unitSelection'));
+        document.getElementById('next-question-btn').addEventListener('click', nextQuestion);
+        document.getElementById('back-to-units-results').addEventListener('click', () => showView('unitSelection'));
+
+        document.getElementById('back-to-units-typing').addEventListener('click', () => showView('unitSelection'));
+        document.getElementById('typing-input').addEventListener('input', handleTypingInput);
+        document.getElementById('next-typing-item-btn').addEventListener('click', nextTypingItem);
+
+        document.getElementById('back-to-units-dictation').addEventListener('click', () => showView('unitSelection'));
+        document.getElementById('play-dictation-audio-btn').addEventListener('click', playDictationAudio);
+        document.getElementById('check-dictation-answer-btn').addEventListener('click', checkDictationAnswer);
+        document.getElementById('next-dictation-item-btn').addEventListener('click', nextDictationItem);
+        
+        document.getElementById('view-report-btn').addEventListener('click', showReport);
+        document.getElementById('close-report-btn').addEventListener('click', () => showView('unitSelection'));
+        document.getElementById('download-report-btn').addEventListener('click', downloadReport);
+    }
+    
+    function showView(viewName) {
+        Object.values(state).forEach(view => view && view.classList.add('hidden'));
+        if (state[viewName + 'View']) {
+            state[viewName + 'View'].classList.remove('hidden');
+        }
+    }
+    
+    function loadProgress() {
+        const saved = localStorage.getItem(PROGRESS_KEY);
+        appData.progress = saved ? JSON.parse(saved) : {};
+    }
+    function saveProgress() {
+        localStorage.setItem(PROGRESS_KEY, JSON.stringify(appData.progress));
+    }
+    function loadQuizScores() {
+        const saved = localStorage.getItem(QUIZ_SCORES_KEY);
+        appData.quizScores = saved ? JSON.parse(saved) : {};
+    }
+    function saveQuizScores() {
+        localStorage.setItem(QUIZ_SCORES_KEY, JSON.stringify(appData.quizScores));
+    }
+
+    function setupUnitSelection() {
+        const unitGrid = document.getElementById('unit-grid');
+        unitGrid.innerHTML = '';
+        appData.units.forEach(unit => {
+            const unitWords = appData.allWords.filter(w => w.unit === unit.id);
+            if (unitWords.length === 0) return;
+            const masteredCount = unitWords.filter(w => appData.progress[w.id] === 'mastered').length;
+            const progressPercent = unitWords.length > 0 ? (masteredCount / unitWords.length) * 100 : 0;
+            const lastScore = appData.quizScores[unit.id] !== undefined ? `${appData.quizScores[unit.id]} / ${QUIZ_LENGTH}` : 'N/A';
+            
+            const cardEl = document.createElement('div');
+            cardEl.className = 'p-3 border rounded-xl bg-white shadow-sm flex flex-col justify-between hover:border-blue-400 transition-all';
+            const nameParts = unit.name.split(' / ');
+            const zhName = nameParts[0] || '';
+            const enName = nameParts[1] || '';
+            cardEl.innerHTML = `
+                <div>
+                    <p class="font-semibold text-slate-800">Unit ${unit.id}</p>
+                    <p class="text-slate-700 text-sm">${zhName}</p>
+                    <p class="text-xs text-slate-500 mb-2">${enName}</p>
+                    <div class="progress-bar-bg w-full h-2 mb-1"><div class="progress-bar-fg" style="width: ${progressPercent}%;"></div></div>
+                    <p class="text-xs text-slate-400">學習進度: ${masteredCount}/${unitWords.length}</p>
+                    <p class="text-xs text-slate-400">上次成績: ${lastScore}</p>
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-2">
+                    <button data-unit-id="${unit.id}" class="learn-btn w-full text-xs py-1.5 px-2 rounded-md bg-white border border-slate-300 hover:bg-slate-50">學習 / Learn</button>
+                    <button data-unit-id="${unit.id}" class="quiz-btn w-full text-xs py-1.5 px-2 rounded-md bg-purple-500 text-white hover:bg-purple-600">測驗 / Quiz</button>
+                    <button data-unit-id="${unit.id}" class="typing-btn w-full text-xs py-1.5 px-2 rounded-md bg-slate-700 text-white hover:bg-slate-800">打字 / Typing</button>
+                    <button data-unit-id="${unit.id}" class="dictation-btn w-full text-xs py-1.5 px-2 rounded-md bg-sky-600 text-white hover:bg-sky-700">聽打 / Dictation</button>
+                </div>
+            `;
+            unitGrid.appendChild(cardEl);
+        });
+
+        unitGrid.querySelectorAll('.learn-btn').forEach(btn => btn.addEventListener('click', (e) => selectUnit(parseInt(e.currentTarget.dataset.unitId))));
+        unitGrid.querySelectorAll('.quiz-btn').forEach(btn => btn.addEventListener('click', (e) => startQuiz(parseInt(e.currentTarget.dataset.unitId))));
+        unitGrid.querySelectorAll('.typing-btn').forEach(btn => btn.addEventListener('click', (e) => startTyping(parseInt(e.currentTarget.dataset.unitId))));
+        unitGrid.querySelectorAll('.dictation-btn').forEach(btn => btn.addEventListener('click', (e) => startDictation(parseInt(e.currentTarget.dataset.unitId))));
+    }
+
+    async function speak(text) {
+        if (!text || !voicesPromise) {
+            console.error("Speech Synthesis API not supported or no text provided.");
+            alert("抱歉，您的瀏覽器不支援語音功能。\nSorry, your browser does not support the speech feature.");
+            return;
+        }
+
+        try {
+            // Wait for voices to be loaded
+            const voices = await voicesPromise;
+            
+            // Create a new utterance for each speech request
+            const utterance = new SpeechSynthesisUtterance(text);
+            const twVoice = voices.find(voice => voice.lang === 'zh-TW');
+
+            if (twVoice) {
+                utterance.voice = twVoice;
+            } else {
+                console.warn("zh-TW voice not found, using browser default for the language.");
+            }
+            utterance.lang = 'zh-TW';
+            utterance.rate = 0.9;
+
+            utterance.onerror = (event) => {
+                console.error('SpeechSynthesisUtterance.onerror event:', event);
+                // The event.error property contains a string code for the error.
+                let errorMessage = event.error || 'unknown error';
+                console.error(`Speech synthesis failed with error: ${errorMessage}`);
+                alert(`語音播放錯誤 (${errorMessage})。請稍後再試或更換瀏覽器。\nSpeech playback error (${errorMessage}). Please try again later or use a different browser.`);
+            };
+
+            // It's safer to cancel any pending speech before starting a new one.
+            window.speechSynthesis.cancel(); 
+            window.speechSynthesis.speak(utterance);
+        } catch (error) {
+            console.error("Error in speak function:", error);
+            alert("初始化語音功能時發生錯誤。\nAn error occurred while initializing speech functionality.");
+        }
+    }
+
+    function startDictation(unitId) {
+        const unitWords = appData.allWords.filter(w => w.unit === unitId);
+        let dictationItems = [];
+        unitWords.forEach(word => {
+            dictationItems.push(word.word.split('/')[0]);
+            word.def.forEach(d => {
+                if (d.eg) d.eg.forEach(ex => dictationItems.push(ex.zh));
+            });
+        });
+        currentDictation = {
+            unitId: unitId,
+            items: [...dictationItems].sort(() => 0.5 - Math.random()).slice(0, DICTATION_LENGTH),
+            currentItemIndex: 0
+        };
+        displayDictationItem();
+        showView('dictation');
+    }
+    function displayDictationItem() {
+        document.getElementById('dictation-progress').textContent = `項目 (Item) ${currentDictation.currentItemIndex + 1} / ${currentDictation.items.length}`;
+        const inputEl = document.getElementById('dictation-input');
+        inputEl.value = '';
+        inputEl.disabled = false;
+        inputEl.className = 'w-full p-4 border-2 border-slate-300 rounded-lg text-2xl text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors';
+        document.getElementById('dictation-answer-feedback').innerHTML = '';
+        document.getElementById('check-dictation-answer-btn').disabled = false;
+        document.getElementById('next-dictation-item-btn').disabled = true;
+        inputEl.focus();
+    }
+    function playDictationAudio() {
+        const textToSpeak = currentDictation.items[currentDictation.currentItemIndex];
+        speak(textToSpeak);
+    }
+    function checkDictationAnswer() {
+        const inputEl = document.getElementById('dictation-input');
+        const feedbackEl = document.getElementById('dictation-answer-feedback');
+        const correctText = currentDictation.items[currentDictation.currentItemIndex];
+        const isCorrect = inputEl.value.trim() === correctText;
+        if(isCorrect) {
+            inputEl.classList.remove('incorrect');
+            inputEl.classList.add('correct');
+            feedbackEl.innerHTML = '<span class="text-green-600">✔ 正確！</span>';
+        } else {
+            inputEl.classList.remove('correct');
+            inputEl.classList.add('incorrect');
+            feedbackEl.innerHTML = `<span class="text-red-600">✘ 錯誤。</span><br><span class="text-slate-600">正確答案: ${correctText}</span>`;
+        }
+        inputEl.disabled = true;
+        document.getElementById('check-dictation-answer-btn').disabled = true;
+        document.getElementById('next-dictation-item-btn').disabled = false;
+    }
+    function nextDictationItem() {
+        currentDictation.currentItemIndex++;
+        if (currentDictation.currentItemIndex < currentDictation.items.length) {
+            displayDictationItem();
+        } else {
+            alert('本單元聽打練習完成！/ Dictation practice for this unit is complete!');
+            showView('unitSelection');
+        }
+    }
+    function startQuiz(unitId) {
+        const unitWords = appData.allWords.filter(word => word.unit === unitId);
+        if (unitWords.length < 4) {
+            alert('This unit does not have enough words for a quiz.');
+            return;
+        }
+        currentQuiz = {
+            unitId: unitId,
+            questions: generateQuizQuestions(unitWords),
+            currentQuestionIndex: 0,
+            score: 0,
+            userAnswers: []
+        };
+        displayQuestion();
+        showView('quiz');
+    }
+    function generateQuizQuestions(unitWords) {
+        const questions = [];
+        const shuffledWords = [...unitWords].sort(() => 0.5 - Math.random());
+        const selectedWords = shuffledWords.slice(0, Math.min(shuffledWords.length, QUIZ_LENGTH));
+        for (const word of selectedWords) {
+            const type = Math.random() < 0.5 ? 'def' : 'sentence';
+            let questionText, options, correctAnswer, questionType;
+            const otherWords = appData.allWords.filter(w => w.id !== word.id);
+            const wrongOptionsPool = otherWords.sort(() => 0.5 - Math.random()).slice(0, 3);
+            if (type === 'def' || !word.def[0].eg || word.def[0].eg.length === 0) {
+                questionType = 'def';
+                questionText = `<span class="serif text-4xl">${word.word.split('/')[0]}</span>`;
+                correctAnswer = word.def[0].en;
+                options = wrongOptionsPool.map(w => w.def[0].en);
+                options.push(correctAnswer);
+            } else { 
+                const example = word.def[0].eg[0];
+                questionType = 'sentence';
+                questionText = example.zh.replace(word.word.split('/')[0], '_______');
+                correctAnswer = word.word.split('/')[0];
+                options = wrongOptionsPool.map(w => w.word.split('/')[0]);
+                options.push(correctAnswer);
+            }
+            questions.push({ word: word, question: questionText, options: options.sort(() => 0.5 - Math.random()), correctAnswer: correctAnswer, type: questionType });
+        }
+        return questions;
+    }
+    function displayQuestion() {
+        const q = currentQuiz.questions[currentQuiz.currentQuestionIndex];
+        document.getElementById('quiz-question').innerHTML = q.question;
+        const optionsContainer = document.getElementById('quiz-options');
+        optionsContainer.innerHTML = '';
+        q.options.forEach(option => {
+            const button = document.createElement('button');
+            button.className = 'quiz-option p-4 border-2 rounded-lg text-left';
+            button.textContent = option;
+            button.addEventListener('click', () => selectAnswer(button, option));
+            optionsContainer.appendChild(button);
+        });
+        document.getElementById('quiz-progress').textContent = `問題 (Question) ${currentQuiz.currentQuestionIndex + 1} / ${currentQuiz.questions.length}`;
+        document.getElementById('next-question-btn').disabled = true;
+    }
+    function selectAnswer(button, selectedOption) {
+        const buttons = document.querySelectorAll('.quiz-option');
+        buttons.forEach(btn => {
+            btn.disabled = true;
+            if (btn.textContent === selectedOption) { btn.classList.add('selected'); }
+        });
+        const q = currentQuiz.questions[currentQuiz.currentQuestionIndex];
+        const isCorrect = selectedOption === q.correctAnswer;
+        if (isCorrect) { currentQuiz.score++; }
+        currentQuiz.userAnswers.push({ question: q.question, selected: selectedOption, correct: q.correctAnswer, isCorrect: isCorrect, word: q.word });
+        buttons.forEach(btn => {
+            if (btn.textContent === q.correctAnswer) { btn.classList.add('correct'); } 
+            else if (btn.textContent === selectedOption) { btn.classList.add('incorrect'); }
+        });
+        document.getElementById('next-question-btn').disabled = false;
+    }
+    function nextQuestion() {
+        currentQuiz.currentQuestionIndex++;
+        if (currentQuiz.currentQuestionIndex < currentQuiz.questions.length) {
+            displayQuestion();
+        } else {
+            showQuizResults();
+        }
+    }
+    function showQuizResults() {
+        document.getElementById('quiz-score').textContent = `${currentQuiz.score} / ${currentQuiz.questions.length}`;
+        const detailsContainer = document.getElementById('quiz-results-details');
+        detailsContainer.innerHTML = '';
+        currentQuiz.userAnswers.forEach((ans, index) => {
+            const resultEl = document.createElement('div');
+            resultEl.className = `p-2 my-1 rounded ${ans.isCorrect ? 'bg-green-100' : 'bg-red-100'}`;
+            let questionDisplay = (ans.word.def[0].eg && ans.word.def[0].eg.length > 0) 
+                ? ans.word.def[0].eg[0].zh 
+                : ans.question;
+            resultEl.innerHTML = `
+                <p><strong>Q${index + 1}:</strong> ${questionDisplay.replace(ans.word.word.split('/')[0], `<strong><em>${ans.word.word.split('/')[0]}</em></strong>`)}</p>
+                <p class="text-sm">你的答案: ${ans.selected} ${ans.isCorrect ? '✔' : `✘ (正確答案: ${ans.correct})`}</p>
+            `;
+            detailsContainer.appendChild(resultEl);
+        });
+        appData.quizScores[currentQuiz.unitId] = currentQuiz.score;
+        saveQuizScores();
+        setupUnitSelection();
+        showView('quizResults');
+    }
+    function startTyping(unitId) {
+        const unitWords = appData.allWords.filter(w => w.unit === unitId);
+        let wordsForTyping = [...unitWords].sort(() => 0.5 - Math.random()).slice(0, TYPING_WORD_COUNT);
+        
+        let sentencesForTyping = [];
+        unitWords.forEach(word => {
+            word.def.forEach(d => {
+                if (d.eg) {
+                    d.eg.forEach(ex => sentencesForTyping.push(ex.zh));
+                }
+            });
+        });
+        sentencesForTyping = sentencesForTyping.sort(() => 0.5 - Math.random()).slice(0, TYPING_LENGTH - TYPING_WORD_COUNT);
+
+        currentTyping = {
+            unitId: unitId,
+            items: [...wordsForTyping.map(w => w.word.split('/')[0]), ...sentencesForTyping],
+            currentItemIndex: 0
+        };
+
+        displayTypingItem();
+        showView('typing');
+    }
+    function displayTypingItem() {
+        const promptEl = document.getElementById('typing-prompt');
+        const inputEl = document.getElementById('typing-input');
+        const nextBtn = document.getElementById('next-typing-item-btn');
+        const progressEl = document.getElementById('typing-progress');
+
+        const currentText = currentTyping.items[currentTyping.currentItemIndex];
+        promptEl.innerHTML = '';
+        currentText.split('').forEach(char => {
+            const charSpan = document.createElement('span');
+            charSpan.className = 'untyped-char';
+            charSpan.textContent = char;
+            promptEl.appendChild(charSpan);
+        });
+
+        inputEl.value = '';
+        inputEl.disabled = false;
+        inputEl.focus();
+        nextBtn.disabled = true;
+        progressEl.textContent = `項目 (Item) ${currentTyping.currentItemIndex + 1} / ${currentTyping.items.length}`;
+    }
+    function handleTypingInput() {
+        const promptEl = document.getElementById('typing-prompt');
+        const inputEl = document.getElementById('typing-input');
+        const nextBtn = document.getElementById('next-typing-item-btn');
+        
+        const promptChars = promptEl.querySelectorAll('span');
+        const inputChars = inputEl.value.split('');
+        let allCorrect = inputChars.length === promptChars.length;
+
+        promptChars.forEach((charSpan, index) => {
+            if (index < inputChars.length) {
+                if (inputChars[index] === charSpan.textContent) {
+                    charSpan.className = 'correct-char';
+                } else {
+                    charSpan.className = 'incorrect-char';
+                    allCorrect = false;
+                }
+            } else {
+                charSpan.className = 'untyped-char';
+            }
+        });
+
+        if (allCorrect) {
+            nextBtn.disabled = false;
+            inputEl.disabled = true;
+        }
+    }
+    function nextTypingItem() {
+        currentTyping.currentItemIndex++;
+        if (currentTyping.currentItemIndex < currentTyping.items.length) {
+            displayTypingItem();
+        } else {
+            alert('本單元打字練習完成！/ Typing practice for this unit is complete!');
+            showView('unitSelection');
+        }
+    }
+    function markCurrentWord(status) {
+        if (!appData.currentWords || appData.currentWords.length === 0) return;
+        const word = appData.currentWords[appData.currentCardIndex];
+        appData.progress[word.id] = status;
+        saveProgress();
+        updateMasteryButtonsUI(word.id);
+        setTimeout(() => navigateCard(1), 200);
+    }
+    
+    function selectUnit(unitId) {
+        appData.currentUnit = unitId;
+        appData.currentWords = appData.allWords.filter(word => word.unit === unitId);
+        appData.currentCardIndex = 0;
+        if (appData.currentWords.length > 0) {
+            updateFlashcard();
+            showView('flashcard');
+        } else {
+            showView('unitSelection');
+        }
+    }
+    
+    function updateFlashcard() {
+        const card = document.getElementById('card');
+        if (!card || !appData.currentWords || appData.currentWords.length === 0) return;
+        
+        if (card.classList.contains('is-flipped')) { card.classList.remove('is-flipped'); }
+        const wordData = appData.currentWords[appData.currentCardIndex];
+        const wordEl = document.getElementById('word');
+        const mainWord = wordData.word.split('/')[0];
+        wordEl.innerHTML = `${mainWord} <span class="speaker-container">${speakerIconSVG}</span>`;
+        wordEl.querySelector('.speaker-container').onclick = (e) => { e.stopPropagation(); speak(mainWord); };
+        document.getElementById('pronunciation').textContent = `${wordData.zhuyin.split('/')[0]} / ${wordData.pinyin.split('/')[0]}`;
+        const cardBackContent = document.getElementById('card-back-content');
+        let backHTML = '';
+        wordData.def.forEach((def, index) => {
+            backHTML += `
+                <div class="mb-4 ${index > 0 ? 'pt-4 border-t' : ''}">
+                    <p><span class="inline-block bg-sky-100 text-sky-800 text-sm px-2 py-1 rounded-md">${def.pos}</span> <span class="ml-2 text-lg">${def.en}</span></p>
+                    <ul class="mt-3 space-y-2">
+                        ${(def.eg || []).map(sentenceObj => `
+                            <li class="mb-3">
+                                <div class="flex items-start gap-3 example-sentence">
+                                    <span class="sentence-speaker flex-shrink-0 mt-1" data-sentence="${sentenceObj.zh.replace(/"/g, '&quot;')}">${speakerIconSVG}</span>
+                                    <span>${sentenceObj.zh}</span>
+                                </div>
+                                <p class="pl-10 text-slate-500 example-translation mt-1">${sentenceObj.en}</p>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>`;
+        });
+        cardBackContent.innerHTML = backHTML;
+        cardBackContent.querySelectorAll('.sentence-speaker').forEach(speaker => {
+            speaker.addEventListener('click', (e) => { e.stopPropagation(); speak(speaker.dataset.sentence); });
+        });
+        document.getElementById('card-counter').textContent = `詞卡 (Card) ${appData.currentCardIndex + 1} / ${appData.currentWords.length}`;
+        updateMasteryButtonsUI(wordData.id);
+    }
+    
+    function updateMasteryButtonsUI(wordId) {
+        const markMasteredBtn = document.getElementById('mark-mastered');
+        const markReviewingBtn = document.getElementById('mark-reviewing');
+        const status = appData.progress[wordId];
+        markMasteredBtn.className = 'px-6 py-2 border-2 rounded-full font-semibold transition-colors';
+        markReviewingBtn.className = 'px-6 py-2 border-2 rounded-full font-semibold transition-colors';
+        if (status === 'mastered') {
+            markMasteredBtn.classList.add('bg-green-500', 'text-white', 'border-green-500');
+            markReviewingBtn.classList.add('border-orange-400', 'text-orange-500', 'hover:bg-orange-50');
+        } else if (status === 'reviewing') {
+            markReviewingBtn.classList.add('bg-orange-400', 'text-white', 'border-orange-400');
+            markMasteredBtn.classList.add('border-green-500', 'text-green-600', 'hover:bg-green-50');
+        } else {
+            markMasteredBtn.classList.add('border-green-500', 'text-green-600', 'hover:bg-green-50');
+            markReviewingBtn.classList.add('border-orange-400', 'text-orange-500', 'hover:bg-orange-50');
+        }
+    }
+
+    function navigateCard(direction) {
+        if (!appData.currentWords || appData.currentWords.length === 0) return;
+        appData.currentCardIndex = (appData.currentCardIndex + direction + appData.currentWords.length) % appData.currentWords.length;
+        updateFlashcard();
+    }
+
+    function showReport() {
+        const masteredWords = [], reviewingWords = [], unseenWords = [];
+        appData.allWords.forEach(word => {
+            const status = appData.progress[word.id];
+            const entry = `<li>${word.word.split('/')[0]} <span class="text-slate-400">- ${word.def[0].en}</span></li>`;
+            if (status === 'mastered') masteredWords.push(entry);
+            else if (status === 'reviewing') reviewingWords.push(entry);
+            else unseenWords.push(entry);
+        });
+        const masteredCount = masteredWords.length;
+        const masteredPercent = appData.allWords.length > 0 ? ((masteredCount / appData.allWords.length) * 100).toFixed(1) : 0;
+        document.getElementById('report-summary').innerHTML = `<p class="text-3xl font-bold">${masteredCount} / ${appData.allWords.length}</p><p class="text-slate-600">已掌握 (Mastered)</p><div class="w-full max-w-xs mx-auto mt-2"><div class="progress-bar-bg w-full h-4"><div class="progress-bar-fg flex items-center justify-center text-xs text-white font-bold" style="width: ${masteredPercent}%;">${masteredPercent}%</div></div></div>`;
+        document.getElementById('report-mastered-list').innerHTML = masteredWords.join('');
+        document.getElementById('report-reviewing-list').innerHTML = reviewingWords.join('');
+        document.getElementById('report-unseen-list').innerHTML = unseenWords.join('');
+        showView('report');
+    }
+    
+    function downloadReport() {
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+        csvContent += "Unit,Word,Pinyin,English Definition,Mastery Status,Last Quiz Score\r\n";
+        appData.allWords.forEach(word => {
+            const status = appData.progress[word.id] || 'Not Studied';
+            const enDefs = word.def.map(d => d.en).join('; ');
+            const score = appData.quizScores[word.unit] !== undefined ? `${appData.quizScores[word.unit]}/${QUIZ_LENGTH}` : 'N/A';
+            const row = [word.unit, word.word.split('/')[0], word.pinyin, `"${enDefs}"`, status, score];
+            csvContent += row.join(',') + "\r\n";
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "chinese_learning_report.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
+    init();
+});
+</script>
+</body>
+</html>
+
+
